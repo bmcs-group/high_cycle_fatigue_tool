@@ -8,6 +8,7 @@ the first row. Also the time column must be the first column.
 
 '''
 import os
+from pathlib import Path
 import string
 
 from matplotlib.figure import Figure
@@ -58,7 +59,7 @@ class ColumnsAverage(tr.HasStrictTraits):
 
 
 class HCFT(tr.HasStrictTraits):
-    '''High-Cycle Fatigue Filter
+    '''High-Cycle Fatigue Tool
     '''
 
     #=========================================================================
@@ -724,6 +725,6 @@ class HCFT(tr.HasStrictTraits):
 
 
 if __name__ == '__main__':
-    hcft = HCFT(file_csv='D:\\CSV files')
+    hcft = HCFT(file_csv=os.path.expanduser("~"))
 
     hcft.configure_traits()
