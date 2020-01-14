@@ -166,7 +166,7 @@ class HCFT(tr.HasStrictTraits):
                 skiprows=self.skip_first_rows, usecols=[i]))
 
             """ TODO! Create time array supposing it's column is the
-            first one in the file and that we have 100 reads in 1 second """
+            first one in the file """
             if i == 0 and self.take_time_from_first_column == False:
                 column_array = np.arange(start=0.0,
                                          stop=len(column_array) /
@@ -242,6 +242,10 @@ class HCFT(tr.HasStrictTraits):
                                      + '.npy')).flatten()
         peak_force_before_cycles_index = np.where(
             abs((force)) > abs(self.peak_force_before_cycles))[0][0]
+        print('force', force)
+        print('abs((force))', abs((force)))
+        print('abs(self.peak_force_before_cycles)',
+              abs(self.peak_force_before_cycles))
         force_ascending = force[0:peak_force_before_cycles_index]
         force_rest = force[peak_force_before_cycles_index:]
 
@@ -340,53 +344,70 @@ class HCFT(tr.HasStrictTraits):
                 cutted_max_indices.append(max_index)
                 cutted_min_indices.append(min_index)
 
+        if max_indices.size > min_indices.size:
+            cutted_max_indices.append(max_indices[-1])
+        elif min_indices.size > max_indices.size:
+            cutted_min_indices.append(min_indices[-1])
+
         return cutted_max_indices, cutted_min_indices
 
     def get_array_max_and_min_indices(self, input_array):
 
         # Checking dominant sign
         positive_values_count = np.sum(np.array(input_array) >= 0)
+        print('positive_values_count', positive_values_count)
         negative_values_count = input_array.size - positive_values_count
 
         # Getting max and min indices
         if (positive_values_count > negative_values_count):
-            force_max_indices = argrelextrema(input_array, np.greater_equal)[0]
-            force_min_indices = argrelextrema(input_array, np.less_equal)[0]
+            force_max_indices = self.get_max_indices(input_array)
+            force_min_indices = self.get_min_indices(input_array)
         else:
-            force_max_indices = argrelextrema(input_array, np.less_equal)[0]
-            force_min_indices = argrelextrema(input_array, np.greater_equal)[0]
-
-        # Remove subsequent max/min indices (np.greater_equal will give 1,2 for
-        # [4, 8, 8, 1])
-        force_max_indices = self.remove_subsequent_max_values(
-            force_max_indices)
-        force_min_indices = self.remove_subsequent_min_values(
-            force_min_indices)
-
-        # If size is not equal remove the last element from the big one
-        if force_max_indices.size > force_min_indices.size:
-            force_max_indices = force_max_indices[:-1]
-        elif force_max_indices.size < force_min_indices.size:
-            force_min_indices = force_min_indices[:-1]
+            force_max_indices = self.get_min_indices(input_array)
+            force_min_indices = self.get_max_indices(input_array)
 
         return force_max_indices, force_min_indices
 
-    def remove_subsequent_max_values(self, force_max_indices):
-        to_delete_from_maxima = []
-        for i in range(force_max_indices.size - 1):
-            if force_max_indices[i + 1] - force_max_indices[i] == 1:
-                to_delete_from_maxima.append(i)
+    def get_max_indices(self, a):
+        # This method doesn't qualify first and last elements as max
+        max_indices = []
+        i = 1
+        while i < np.size(a) - 1:
+            previous_element = a[i - 1]
 
-        force_max_indices = np.delete(force_max_indices, to_delete_from_maxima)
-        return force_max_indices
+            # Skip repeated elements and record previous element value
+            first_repeated_element = True
 
-    def remove_subsequent_min_values(self, force_min_indices):
-        to_delete_from_minima = []
-        for i in range(force_min_indices.size - 1):
-            if force_min_indices[i + 1] - force_min_indices[i] == 1:
-                to_delete_from_minima.append(i)
-        force_min_indices = np.delete(force_min_indices, to_delete_from_minima)
-        return force_min_indices
+            while a[i] == a[i + 1] and i < np.size(a) - 1:
+                if first_repeated_element:
+                    previous_element = a[i - 1]
+                    first_repeated_element = False
+                i += 1
+
+            if a[i] > a[i + 1] and a[i] > previous_element:
+                max_indices.append(i)
+            i += 1
+        return np.array(max_indices)
+
+    def get_min_indices(self, a):
+        # This method doesn't qualify first and last elements as min
+        min_indices = []
+        i = 1
+        while i < np.size(a) - 1:
+            previous_element = a[i - 1]
+
+            # Skip repeated elements and record previous element value
+            first_repeated_element = True
+            while a[i] == a[i + 1] and i < np.size(a) - 1:
+                if first_repeated_element:
+                    previous_element = a[i - 1]
+                    first_repeated_element = False
+                i += 1
+
+            if a[i] < a[i + 1] and a[i] < previous_element:
+                min_indices.append(i)
+            i += 1
+        return np.array(min_indices)
 
     def _activate_changed(self):
         if self.activate == False:
@@ -590,7 +611,7 @@ class HCFT(tr.HasStrictTraits):
             ax.plot(np.linspace(0, 1., disp_max.size), disp_max,
                     'k', linewidth=1.2, color=np.random.rand(3), label='Max'
                     + ', ' + self.file_name + ', ' + self.x_axis)
-            ax.plot(np.linspace(0, 1., disp_max.size), disp_min,
+            ax.plot(np.linspace(0, 1., disp_min.size), disp_min,
                     'k', linewidth=1.2, color=np.random.rand(3), label='Min'
                     + ', ' + self.file_name + ', ' + self.x_axis)
         else:
@@ -599,7 +620,7 @@ class HCFT(tr.HasStrictTraits):
                     'k', linewidth=1.2, color=np.random.rand(3), label='Max'
                     + ', ' + self.file_name + ', ' + self.x_axis)
             ax.plot(np.linspace(0, complete_cycles_number,
-                                disp_max.size), disp_min,
+                                disp_min.size), disp_min,
                     'k', linewidth=1.2, color=np.random.rand(3), label='Min'
                     + ', ' + self.file_name + ', ' + self.x_axis)
 
@@ -621,6 +642,8 @@ class HCFT(tr.HasStrictTraits):
         self.force_name = 'Kraft'
         self.plot_list = []
         self.columns_to_be_averaged = []
+        smooth = tr.Bool
+        plot_every_nth_point = tr.Range(low=1, high=1000000, mode='spinner')
     #=========================================================================
     # Configuration of the view
     #=========================================================================
@@ -669,7 +692,7 @@ class HCFT(tr.HasStrictTraits):
                                           ui.Item('plot_every_nth_point'))
                                       ),
                             show_border=True,
-                            label='Plotting Creep-fatigue of x-axis'
+                            label='Plotting Creep-fatigue of X axis'
                         ),
                         ui.Item('plot_list'),
                         show_border=True,
