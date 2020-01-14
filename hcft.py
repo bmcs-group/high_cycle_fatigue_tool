@@ -482,7 +482,7 @@ class HCFT(tr.HasStrictTraits):
 
     def _add_plot_fired(self):
 
-        if self.max_plots_number_is_reached() == True:
+        if self.plots_num != 1 and self.max_plots_number_is_reached():
             return
 
         if self.apply_filters:
@@ -539,7 +539,10 @@ class HCFT(tr.HasStrictTraits):
 
         ax.legend()
 
-        self.plot_list.append('{}, {}'.format(x_axis_name, y_axis_name))
+        if self.plots_num == 1 and len(self.plot_list) != 0:
+            self.plot_list[0] += '+{}, {}'.format(self.x_axis, self.y_axis)
+        else:
+            self.plot_list.append('{}, {}'.format(x_axis_name, y_axis_name))
         self.data_changed = True
         print('Finished adding plot!')
 
@@ -570,7 +573,7 @@ class HCFT(tr.HasStrictTraits):
                 + '_max.npy')) == False:
             return
 
-        if self.max_plots_number_is_reached() == True:
+        if self.plots_num != 1 and self.max_plots_number_is_reached():
             return
 
         disp_max = self.x_axis_multiplier * \
@@ -627,8 +630,12 @@ class HCFT(tr.HasStrictTraits):
 
         ax.legend()
 
-        self.plot_list.append(
-            'Creep-fatigue: {}, {}'.format(self.x_axis, self.y_axis))
+        if self.plots_num == 1 and len(self.plot_list) != 0:
+            self.plot_list[0] += \
+                '+Creep-fatigue: {}, {}'.format(self.x_axis, self.y_axis)
+        else:
+            self.plot_list.append(
+                'Creep-fatigue: {}, {}'.format(self.x_axis, self.y_axis))
         self.data_changed = True
 
         print('Finished adding creep-fatigue plot!')
