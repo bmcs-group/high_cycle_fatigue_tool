@@ -242,10 +242,6 @@ class HCFT(tr.HasStrictTraits):
                                      + '.npy')).flatten()
         peak_force_before_cycles_index = np.where(
             abs((force)) > abs(self.peak_force_before_cycles))[0][0]
-        print('force', force)
-        print('abs((force))', abs((force)))
-        print('abs(self.peak_force_before_cycles)',
-              abs(self.peak_force_before_cycles))
         force_ascending = force[0:peak_force_before_cycles_index]
         force_rest = force[peak_force_before_cycles_index:]
 
@@ -355,7 +351,6 @@ class HCFT(tr.HasStrictTraits):
 
         # Checking dominant sign
         positive_values_count = np.sum(np.array(input_array) >= 0)
-        print('positive_values_count', positive_values_count)
         negative_values_count = input_array.size - positive_values_count
 
         # Getting max and min indices
@@ -372,17 +367,20 @@ class HCFT(tr.HasStrictTraits):
         # This method doesn't qualify first and last elements as max
         max_indices = []
         i = 1
-        while i < np.size(a) - 1:
+        while i < a.size - 1:
             previous_element = a[i - 1]
 
             # Skip repeated elements and record previous element value
             first_repeated_element = True
 
-            while a[i] == a[i + 1] and i < np.size(a) - 1:
+            while a[i] == a[i + 1] and i < a.size - 1:
                 if first_repeated_element:
                     previous_element = a[i - 1]
                     first_repeated_element = False
-                i += 1
+                if i < a.size - 2:
+                    i += 1
+                else:
+                    break
 
             if a[i] > a[i + 1] and a[i] > previous_element:
                 max_indices.append(i)
@@ -393,16 +391,19 @@ class HCFT(tr.HasStrictTraits):
         # This method doesn't qualify first and last elements as min
         min_indices = []
         i = 1
-        while i < np.size(a) - 1:
+        while i < a.size - 1:
             previous_element = a[i - 1]
 
             # Skip repeated elements and record previous element value
             first_repeated_element = True
-            while a[i] == a[i + 1] and i < np.size(a) - 1:
+            while a[i] == a[i + 1]:
                 if first_repeated_element:
                     previous_element = a[i - 1]
                     first_repeated_element = False
-                i += 1
+                if i < a.size - 2:
+                    i += 1
+                else:
+                    break
 
             if a[i] < a[i + 1] and a[i] < previous_element:
                 min_indices.append(i)
