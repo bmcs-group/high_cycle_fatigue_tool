@@ -11,9 +11,7 @@ import os
 from pathlib import Path
 import string
 
-from matplotlib.figure import Figure
 from pyface.api import FileDialog, MessageDialog, OK
-from scipy.signal import argrelextrema
 from scipy.signal import savgol_filter
 from util.traits.editors import MPLFigureEditor
 
@@ -104,10 +102,10 @@ class HCFT(tr.HasStrictTraits):
         'Define min cycle range(force difference)', 'Define Max, Min')
     columns_to_be_averaged = tr.List
 
-    figure = tr.Instance(Figure)
+    figure = tr.Instance(mpl.figure.Figure)
 
     def _figure_default(self):
-        figure = Figure(facecolor='white')
+        figure = mpl.figure.Figure(facecolor='white')
         figure.set_tight_layout(True)
         return figure
 
@@ -700,7 +698,7 @@ class HCFT(tr.HasStrictTraits):
                                           ui.Item('plot_every_nth_point'))
                                       ),
                             show_border=True,
-                            label='Plotting Creep-fatigue of X axis'
+                            label='Plotting Creep-fatigue of X axis variable'
                         ),
                         ui.Item('plot_list'),
                         show_border=True,
