@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import string
 
+import pyface
 from pyface.api import FileDialog, MessageDialog, OK
 from scipy.signal import savgol_filter
 from util.traits.editors import MPLFigureEditor

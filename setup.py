@@ -11,38 +11,36 @@ scipy_path = os.path.dirname(scipy.__file__)
 
 PYTHON_INSTALL_DIR = os.path.dirname(os.path.dirname(os.__file__))
 
-packages = [
-    # 	'apptools',
-    # 	'configobj',
-    # 		'envisage',
-    #			 'vtk',
-    'mayavi', 'numpy',
-    'six', 'pyface',
-    'traits', 'traitsui'
+packages_to_fetch = [
+    'mayavi',
+    'numpy',
+    'six',
+    'pyface',
+    'traits',
+    'traitsui'
 ]
 base_path = os.path.join(PYTHON_INSTALL_DIR, 'Lib', 'site-packages')
 
 folders = list(next(os.walk(base_path))[1])
 folders = [fol for fol in folders if fol.endswith('-info')]
-folders = [fol for fol in folders if fol.split('-')[0].lower() in packages]
+folders = [fol for fol in folders if fol.split(
+    '-')[0].lower() in packages_to_fetch]
 out = [f for f in folders]
 folders = [os.path.join(base_path, fol) for fol in folders]
 folders = [(fol, '.\lib' + '\\' + out[k]) for k, fol in enumerate(folders)]
 
 build_exe_options = {
-    "packages": ['sys', 'os',
-                 'numpy', 'mayavi',
+    "packages": ['sys',
+                 'os',
+                 #                  'numpy',
+                 #                  'mayavi',
                  'pygments',
-                 'traitsui.qt4.toolkit',
-                 'pyface',
+                 #                  'traitsui.qt4.toolkit',
                  'pathlib',
                  'scipy',
-                 'scipy.spatial.ckdtree',
                  'string',
-                 'pyface.api',
-                 'numpy',
+                 'pyface',
                  'matplotlib',
-                 'mayavi',
                  'pandas',
                  'util.traits'
                  #                  'mayavi.core',
