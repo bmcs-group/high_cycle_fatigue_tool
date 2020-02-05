@@ -584,7 +584,7 @@ class HCFT(tr.HasStrictTraits):
         complete_cycles_number = disp_max.size
 
         print('Adding creep-fatigue plot...')
-        mpl.rcParams['agg.path.chunksize'] = 50000
+        mpl.rcParams['agg.path.chunksize'] = 10000
 
         ax = self.apply_new_subplot()
 
