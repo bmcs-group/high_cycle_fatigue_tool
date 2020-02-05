@@ -67,13 +67,14 @@ class HCFT(tr.HasStrictTraits):
     decimal = tr.Enum(',', '.')
     delimiter = tr.Str(';')
     records_per_second = tr.Float(100)
-    take_time_from_first_column = tr.Bool
+    take_time_from_first_column = tr.Bool(True)
     file_csv = tr.File
     open_file_csv = tr.Button('Input file')
     skip_first_rows = tr.Int(3, auto_set=False, enter_set=True)
     columns_headers_list = tr.List([])
     x_axis = tr.Enum(values='columns_headers_list')
     y_axis = tr.Enum(values='columns_headers_list')
+    force_column = tr.Enum(values='columns_headers_list')
     x_axis_multiplier = tr.Enum(1, -1)
     y_axis_multiplier = tr.Enum(-1, 1)
     npy_folder_path = tr.Str
@@ -82,14 +83,11 @@ class HCFT(tr.HasStrictTraits):
     normalize_cycles = tr.Bool
     smooth = tr.Bool
     plot_every_nth_point = tr.Range(low=1, high=1000000, mode='spinner')
-    force_name = tr.Str('Kraft')
     old_peak_force_before_cycles = tr.Float
     peak_force_before_cycles = tr.Float
     window_length = tr.Int(31)
     polynomial_order = tr.Int(2)
     activate = tr.Bool(False)
-    plots_num = tr.Enum(1, 2, 3, 4, 6, 9)
-    plot_list = tr.List()
     add_plot = tr.Button
     add_creep_plot = tr.Button(desc='Creep plot of X axis array')
     clear_plot = tr.Button
@@ -205,7 +203,6 @@ class HCFT(tr.HasStrictTraits):
 
     def _clear_plot_fired(self):
         self.figure.clear()
-        self.plot_list = []
         self.data_changed = True
 
     def _add_columns_average_fired(self):
@@ -231,13 +228,13 @@ class HCFT(tr.HasStrictTraits):
     def _generate_filtered_and_creep_npy_fired(self):
 
         if self.npy_files_exist(os.path.join(
-                self.npy_folder_path, self.file_name + '_' + self.force_name
+                self.npy_folder_path, self.file_name + '_' + self.force_column
                 + '.npy')) == False:
             return
 
         # 1- Export filtered force
         force = np.load(os.path.join(self.npy_folder_path,
-                                     self.file_name + '_' + self.force_name
+                                     self.file_name + '_' + self.force_column
                                      + '.npy')).flatten()
         peak_force_before_cycles_index = np.where(
             abs((force)) > abs(self.peak_force_before_cycles))[0][0]
@@ -254,13 +251,13 @@ class HCFT(tr.HasStrictTraits):
         force_rest_filtered = force_rest[force_max_min_indices]
         force_filtered = np.concatenate((force_ascending, force_rest_filtered))
         np.save(os.path.join(self.npy_folder_path, self.file_name +
-                             '_' + self.force_name + '_filtered.npy'),
+                             '_' + self.force_column + '_filtered.npy'),
                 force_filtered)
 
         # 2- Export filtered displacements
         # TODO I skipped time presuming it's the first column
         for i in range(1, len(self.columns_headers_list)):
-            if self.columns_headers_list[i] != str(self.force_name):
+            if self.columns_headers_list[i] != str(self.force_column):
 
                 disp = np.load(os.path.join(self.npy_folder_path, self.file_name
                                             + '_' +
@@ -442,15 +439,13 @@ class HCFT(tr.HasStrictTraits):
     # Plotting
     #=========================================================================
 
-    plot_list_current_elements_num = tr.Int(0)
-
     def npy_files_exist(self, path):
         if os.path.exists(path) == True:
             return True
         else:
             dialog = MessageDialog(
                 title='Attention!',
-                message='Please parse csv file to generate npy files first.'.format(self.plots_num))
+                message='Please parse csv file to generate npy files first.')
             dialog.open()
             return False
 
@@ -460,29 +455,13 @@ class HCFT(tr.HasStrictTraits):
         else:
             dialog = MessageDialog(
                 title='Attention!',
-                message='Please generate filtered and creep npy files first.'.format(self.plots_num))
+                message='Please generate filtered and creep npy files first.')
             dialog.open()
             return False
-
-    def max_plots_number_is_reached(self):
-        if len(self.plot_list) >= self.plots_num:
-            dialog = MessageDialog(
-                title='Attention!', message='Max plots number is {}'.format(self.plots_num))
-            dialog.open()
-            return True
-        else:
-            return False
-
-    def _plot_list_changed(self):
-        if len(self.plot_list) > self.plot_list_current_elements_num:
-            self.plot_list_current_elements_num = len(self.plot_list)
 
     data_changed = tr.Event
 
     def _add_plot_fired(self):
-
-        if self.plots_num != 1 and self.max_plots_number_is_reached():
-            return
 
         if self.apply_filters:
 
@@ -526,9 +505,9 @@ class HCFT(tr.HasStrictTraits):
                                      + '.npy'))
 
         print('Adding Plot...')
-        mpl.rcParams['agg.path.chunksize'] = 50000
+        mpl.rcParams['agg.path.chunksize'] = 10000
 
-        ax = self.apply_new_subplot()
+        ax = self.figure.add_subplot(1, 1, 1)
 
         ax.set_xlabel(x_axis_name)
         ax.set_ylabel(y_axis_name)
@@ -537,42 +516,14 @@ class HCFT(tr.HasStrictTraits):
                 ', ' + x_axis_name)
 
         ax.legend()
-
-        if self.plots_num == 1 and len(self.plot_list) != 0:
-            self.plot_list[0] += '+{}, {}'.format(self.x_axis, self.y_axis)
-        else:
-            self.plot_list.append('{}, {}'.format(x_axis_name, y_axis_name))
         self.data_changed = True
         print('Finished adding plot!')
-
-    def apply_new_subplot(self):
-        plt = self.figure
-        if (self.plots_num == 1):
-            return plt.add_subplot(1, 1, 1)
-        elif (self.plots_num == 2):
-            plot_location = int('12' + str(len(self.plot_list) + 1))
-            return plt.add_subplot(plot_location)
-        elif (self.plots_num == 3):
-            plot_location = int('13' + str(len(self.plot_list) + 1))
-            return plt.add_subplot(plot_location)
-        elif (self.plots_num == 4):
-            plot_location = int('22' + str(len(self.plot_list) + 1))
-            return plt.add_subplot(plot_location)
-        elif (self.plots_num == 6):
-            plot_location = int('23' + str(len(self.plot_list) + 1))
-            return plt.add_subplot(plot_location)
-        elif (self.plots_num == 9):
-            plot_location = int('33' + str(len(self.plot_list) + 1))
-            return plt.add_subplot(plot_location)
 
     def _add_creep_plot_fired(self):
 
         if self.filtered_and_creep_npy_files_exist(os.path.join(
                 self.npy_folder_path, self.file_name + '_' + self.x_axis
                 + '_max.npy')) == False:
-            return
-
-        if self.plots_num != 1 and self.max_plots_number_is_reached():
             return
 
         disp_max = self.x_axis_multiplier * \
@@ -586,7 +537,7 @@ class HCFT(tr.HasStrictTraits):
         print('Adding creep-fatigue plot...')
         mpl.rcParams['agg.path.chunksize'] = 10000
 
-        ax = self.apply_new_subplot()
+        ax = self.figure.add_subplot(1, 1, 1)
 
         ax.set_xlabel('Cycles number')
         ax.set_ylabel(self.x_axis)
@@ -628,15 +579,7 @@ class HCFT(tr.HasStrictTraits):
                     + ', ' + self.file_name + ', ' + self.x_axis)
 
         ax.legend()
-
-        if self.plots_num == 1 and len(self.plot_list) != 0:
-            self.plot_list[0] += \
-                '+Creep-fatigue: {}, {}'.format(self.x_axis, self.y_axis)
-        else:
-            self.plot_list.append(
-                'Creep-fatigue: {}, {}'.format(self.x_axis, self.y_axis))
         self.data_changed = True
-
         print('Finished adding creep-fatigue plot!')
 
     def reset(self):
@@ -646,8 +589,6 @@ class HCFT(tr.HasStrictTraits):
         self.npy_folder_path = ''
         self.file_name = ''
         self.apply_filters = False
-        self.force_name = 'Kraft'
-        self.plot_list = []
         self.columns_to_be_averaged = []
         smooth = tr.Bool
         plot_every_nth_point = tr.Range(low=1, high=1000000, mode='spinner')
@@ -679,7 +620,6 @@ class HCFT(tr.HasStrictTraits):
                         label='Processing csv file',
                         show_border=True),
                     ui.VGroup(
-                        ui.HGroup(ui.Item('plots_num'), ui.Item('clear_plot')),
                         ui.HGroup(ui.Item('x_axis'), ui.Item(
                             'x_axis_multiplier')),
                         ui.HGroup(ui.Item('y_axis'), ui.Item(
@@ -701,13 +641,14 @@ class HCFT(tr.HasStrictTraits):
                             show_border=True,
                             label='Plotting Creep-fatigue of X axis variable'
                         ),
-                        ui.Item('plot_list'),
+                        ui.Item('clear_plot', show_label=False,
+                                resizable=True),
                         show_border=True,
                         label='Plotting')
                 )
             ),
             ui.VGroup(
-                ui.Item('force_name'),
+                ui.Item('force_column'),
                 ui.VGroup(ui.VGroup(
                     ui.Item('window_length'),
                     ui.Item('polynomial_order'),
