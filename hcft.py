@@ -10,7 +10,6 @@ the first row.
 import os
 from pathlib import Path
 import string
-import sys
 from threading import Thread
 import traceback
 
@@ -501,15 +500,14 @@ class HCFT(tr.HasStrictTraits):
 
     def add_plot_fired(self):
         try:
-            self.print_custom('Loading npy files...')
             if self.apply_filters:
                 if self.filtered_and_creep_npy_files_exist(os.path.join(
                         self.npy_folder_path, self.file_name + '_' + self.x_axis
                         + '_filtered.npy')) == False:
                     return
-
                 x_axis_name = self.x_axis + '_filtered'
                 y_axis_name = self.y_axis + '_filtered'
+                self.print_custom('Loading npy files...')
                 x_axis_array = self.x_axis_multiplier * \
                     np.load(os.path.join(self.npy_folder_path,
                                          self.file_name + '_' + self.x_axis
@@ -526,6 +524,7 @@ class HCFT(tr.HasStrictTraits):
 
                 x_axis_name = self.x_axis
                 y_axis_name = self.y_axis
+                self.print_custom('Loading npy files...')
                 x_axis_array = self.x_axis_multiplier * \
                     np.load(os.path.join(self.npy_folder_path,
                                          self.file_name + '_' + self.x_axis
@@ -652,7 +651,6 @@ class HCFT(tr.HasStrictTraits):
     #=========================================================================
     # Configuration of the view
     #=========================================================================
-
     traits_view = ui.View(
         ui.HSplit(
             ui.VSplit(
@@ -756,7 +754,6 @@ class HCFT(tr.HasStrictTraits):
         resizable=True,
         width=0.85,
         height=0.7
-
     )
 
 
