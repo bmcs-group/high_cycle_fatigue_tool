@@ -59,6 +59,26 @@ class ColumnsAverage(tr.HasStrictTraits):
     )
 
 
+class PlotSettings(tr.HasStrictTraits):
+    first_rows = tr.Range(low=0, high=10**9, value=6000, mode='spinner')
+    distance = tr.Range(low=0, high=10**9, value=20000, mode='spinner')
+    num_of_rows_after_each_distance = tr.Range(
+        low=0, high=10**9, value=200, mode='spinner')
+#
+#     # Trait view definitions:
+#     traits_view = ui.View(
+#         ui.Item('columns',
+#                 show_label=False,
+#                 editor=average_columns_editor
+#                 ),
+#         buttons=[ui.OKButton, ui.CancelButton],
+#         title='Select arrays to be averaged',
+#         width=0.15,
+#         height=0.3,
+#         resizable=True
+#     )
+
+
 class HCFT(tr.HasStrictTraits):
     '''High-Cycle Fatigue Tool
     '''
@@ -82,6 +102,9 @@ class HCFT(tr.HasStrictTraits):
     npy_folder_path = tr.Str
     file_name = tr.Str
     apply_filters = tr.Bool
+    plot_settings_btn = tr.Button
+    plot_settings = PlotSettings()
+    plot_settings_active = tr.Bool
     normalize_cycles = tr.Bool
     smooth = tr.Bool
     plot_every_nth_point = tr.Range(low=1, high=1000000, mode='spinner')
@@ -470,6 +493,12 @@ class HCFT(tr.HasStrictTraits):
     # Plotting
     #=========================================================================
 
+    def _plot_settings_btn_fired(self):
+        try:
+            self.plot_settings.configure_traits(kind='modal')
+        except Exception as e:
+            self.deal_with_exception(e)
+
     def npy_files_exist(self, path):
         if os.path.exists(path) == True:
             return True
@@ -508,14 +537,15 @@ class HCFT(tr.HasStrictTraits):
                 x_axis_name = self.x_axis + '_filtered'
                 y_axis_name = self.y_axis + '_filtered'
                 self.print_custom('Loading npy files...')
-                x_axis_array = self.x_axis_multiplier * \
-                    np.load(os.path.join(self.npy_folder_path,
-                                         self.file_name + '_' + self.x_axis
-                                         + '_filtered.npy'))
-                y_axis_array = self.y_axis_multiplier * \
-                    np.load(os.path.join(self.npy_folder_path,
-                                         self.file_name + '_' + self.y_axis
-                                         + '_filtered.npy'))
+                # when mmap_mode!=None, the array will be loaded as 'numpy.memmap'
+                # object which doesn't load the array to memory until it's
+                # indexed
+                x_axis_array = np.load(os.path.join(self.npy_folder_path,
+                                                    self.file_name + '_' + self.x_axis
+                                                    + '_filtered.npy'), mmap_mode='r')
+                y_axis_array = np.load(os.path.join(self.npy_folder_path,
+                                                    self.file_name + '_' + self.y_axis
+                                                    + '_filtered.npy'), mmap_mode='r')
             else:
                 if self.npy_files_exist(os.path.join(
                         self.npy_folder_path, self.file_name + '_' + self.x_axis
@@ -525,14 +555,30 @@ class HCFT(tr.HasStrictTraits):
                 x_axis_name = self.x_axis
                 y_axis_name = self.y_axis
                 self.print_custom('Loading npy files...')
-                x_axis_array = self.x_axis_multiplier * \
-                    np.load(os.path.join(self.npy_folder_path,
-                                         self.file_name + '_' + self.x_axis
-                                         + '.npy'))
-                y_axis_array = self.y_axis_multiplier * \
-                    np.load(os.path.join(self.npy_folder_path,
-                                         self.file_name + '_' + self.y_axis
-                                         + '.npy'))
+                # when mmap_mode!=None, the array will be loaded as 'numpy.memmap'
+                # object which doesn't load the array to memory until it's
+                # indexed
+                x_axis_array = np.load(os.path.join(self.npy_folder_path,
+                                                    self.file_name + '_' + self.x_axis
+                                                    + '.npy'), mmap_mode='r')
+                y_axis_array = np.load(os.path.join(self.npy_folder_path,
+                                                    self.file_name + '_' + self.y_axis
+                                                    + '.npy'), mmap_mode='r')
+
+            if self.plot_settings_active:
+                print(self.plot_settings.first_rows)
+                print(self.plot_settings.distance)
+                print(self.plot_settings.num_of_rows_after_each_distance)
+                print(np.size(x_axis_array))
+                indices = self.get_indices_array(np.size(x_axis_array),
+                                                 self.plot_settings.first_rows,
+                                                 self.plot_settings.distance,
+                                                 self.plot_settings.num_of_rows_after_each_distance)
+                x_axis_array = self.x_axis_multiplier * x_axis_array[indices]
+                y_axis_array = self.y_axis_multiplier * y_axis_array[indices]
+            else:
+                x_axis_array = self.x_axis_multiplier * x_axis_array
+                y_axis_array = self.y_axis_multiplier * y_axis_array
 
             self.print_custom('Adding Plot...')
             mpl.rcParams['agg.path.chunksize'] = 10000
@@ -627,6 +673,24 @@ class HCFT(tr.HasStrictTraits):
         except Exception as e:
             self.deal_with_exception(e)
 
+    def get_indices_array(self,
+                          array_size,
+                          first_rows,
+                          distance,
+                          num_of_rows_after_each_distance):
+        result_1 = np.arange(first_rows)
+        result_2 = np.arange(start=first_rows, stop=array_size,
+                             step=distance + num_of_rows_after_each_distance)
+        result_2_updated = np.array([], dtype=np.int_)
+
+        for result_2_value in result_2:
+            data_slice = np.arange(result_2_value, result_2_value +
+                                   num_of_rows_after_each_distance)
+            result_2_updated = np.concatenate((result_2_updated, data_slice))
+
+        result = np.concatenate((result_1, result_2_updated))
+        return result
+
     def reset(self):
         self.columns_to_be_averaged = []
         self.log = ''
@@ -686,7 +750,13 @@ class HCFT(tr.HasStrictTraits):
                             'y_axis_multiplier')),
                         ui.VGroup(
                             ui.HGroup(ui.UItem('add_plot'),
-                                      ui.Item('apply_filters')
+                                      ui.Item('apply_filters'),
+                                      ui.Item('plot_settings_btn',
+                                              label='Settings',
+                                              show_label=False,
+                                              enabled_when='plot_settings_active == True'),
+                                      ui.Item('plot_settings_active',
+                                              show_label=False)
                                       ),
                             show_border=True,
                             label='Plotting X axis with Y axis'
