@@ -503,20 +503,26 @@ class HCFT(tr.HasStrictTraits):
         if os.path.exists(path) == True:
             return True
         else:
-            dialog = MessageDialog(
-                title='Attention!',
-                message='Please parse csv file to generate npy files first.')
-            dialog.open()
+            # TODO fix this
+            self.print_custom(
+                'Please parse csv file to generate npy files first.')
+#             dialog = MessageDialog(
+#                 title='Attention!',
+#                 message='Please parse csv file to generate npy files first.')
+#             dialog.open()
             return False
 
     def filtered_and_creep_npy_files_exist(self, path):
         if os.path.exists(path) == True:
             return True
         else:
-            dialog = MessageDialog(
-                title='Attention!',
-                message='Please generate filtered and creep npy files first.')
-            dialog.open()
+            # TODO fix this
+            self.print_custom(
+                'Please generate filtered and creep npy files first.')
+#             dialog = MessageDialog(
+#                 title='Attention!',
+#                 message='Please generate filtered and creep npy files first.')
+#             dialog.open()
             return False
 
     data_changed = tr.Event
@@ -605,9 +611,7 @@ class HCFT(tr.HasStrictTraits):
         thread.start()
 
     def add_creep_plot_fired(self):
-
         try:
-
             if self.filtered_and_creep_npy_files_exist(os.path.join(
                     self.npy_folder_path, self.file_name + '_' + self.x_axis
                     + '_max.npy')) == False:
@@ -720,6 +724,8 @@ class HCFT(tr.HasStrictTraits):
             ui.VSplit(
                 ui.VGroup(
                     ui.VGroup(
+                        ui.Item('decimal'),
+                        ui.Item('delimiter'),
                         ui.HGroup(
                             ui.UItem('open_file_csv', has_focus=True),
                             ui.UItem('file_csv', style='readonly', width=0.1)),
@@ -736,8 +742,6 @@ class HCFT(tr.HasStrictTraits):
                             label='Time calculation',
                             show_border=True),
                         ui.UItem('add_columns_average'),
-                        ui.Item('decimal'),
-                        ui.Item('delimiter'),
                         ui.Item('skip_first_rows'),
                         ui.UItem('parse_csv_to_npy', resizable=True),
                         label='Processing csv file',
