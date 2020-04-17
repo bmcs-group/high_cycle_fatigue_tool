@@ -31,8 +31,7 @@ average_columns_editor = ui.TableEditor(
     sortable=False,
     configurable=False,
     auto_size=False,
-    columns=[CheckboxColumn(name='selected', label='Select',
-                            width=0.12),
+    columns=[CheckboxColumn(name='selected', label='Select', width=0.12),
              ui.ObjectColumn(name='column_name', editable=False, width=0.24,
                              horizontal_alignment='left')])
 
@@ -52,7 +51,7 @@ class ColumnsAverage(tr.HasStrictTraits):
                 editor=average_columns_editor
                 ),
         buttons=[ui.OKButton, ui.CancelButton],
-        title='Select arrays to be averaged',
+        title='Select data columns to be averaged',
         width=0.15,
         height=0.3,
         resizable=True
@@ -64,20 +63,6 @@ class PlotSettings(tr.HasStrictTraits):
     distance = tr.Range(low=0, high=10**9, value=20000, mode='spinner')
     num_of_rows_after_each_distance = tr.Range(
         low=0, high=10**9, value=200, mode='spinner')
-#
-#     # Trait view definitions:
-#     traits_view = ui.View(
-#         ui.Item('columns',
-#                 show_label=False,
-#                 editor=average_columns_editor
-#                 ),
-#         buttons=[ui.OKButton, ui.CancelButton],
-#         title='Select arrays to be averaged',
-#         width=0.15,
-#         height=0.3,
-#         resizable=True
-#     )
-
 
 class HCFT(tr.HasStrictTraits):
     '''High-Cycle Fatigue Tool
@@ -91,7 +76,7 @@ class HCFT(tr.HasStrictTraits):
     take_time_from_time_column = tr.Bool(True)
     file_csv = tr.File
     open_file_csv = tr.Button('Input file')
-    skip_first_rows = tr.Range(low=1, high=10**9, mode='spinner')
+    skip_first_rows = tr.Range(low=1, high=10**9, value=3, mode='spinner')
     columns_headers_list = tr.List([])
     x_axis = tr.Enum(values='columns_headers_list')
     y_axis = tr.Enum(values='columns_headers_list')
@@ -503,26 +488,16 @@ class HCFT(tr.HasStrictTraits):
         if os.path.exists(path) == True:
             return True
         else:
-            # TODO fix this
             self.print_custom(
                 'Please parse csv file to generate npy files first.')
-#             dialog = MessageDialog(
-#                 title='Attention!',
-#                 message='Please parse csv file to generate npy files first.')
-#             dialog.open()
             return False
 
     def filtered_and_creep_npy_files_exist(self, path):
         if os.path.exists(path) == True:
             return True
         else:
-            # TODO fix this
             self.print_custom(
                 'Please generate filtered and creep npy files first.')
-#             dialog = MessageDialog(
-#                 title='Attention!',
-#                 message='Please generate filtered and creep npy files first.')
-#             dialog.open()
             return False
 
     data_changed = tr.Event
