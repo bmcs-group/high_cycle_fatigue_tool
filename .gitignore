@@ -127,3 +127,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+.idea/high-cycle-fatigue-tool.iml
+
+.idea/modules.xml
+
+.idea/vcs.xml
+
+test_notebook.ipynb
+
+utils/test.py

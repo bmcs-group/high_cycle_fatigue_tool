@@ -8,12 +8,10 @@ the first row.
 
 '''
 import os
-from pathlib import Path
 import string
 from threading import Thread
 import traceback
 
-import pyface
 from pyface.api import FileDialog, MessageDialog, OK
 from scipy.signal import savgol_filter
 from util.traits.editors import MPLFigureEditor
@@ -23,9 +21,9 @@ import numpy as np
 import pandas as pd
 import traits.api as tr
 import traitsui.api as ui
-from traitsui.extras.checkbox_column \
-    import CheckboxColumn
+from traitsui.extras.checkbox_column import CheckboxColumn
 
+from view_handlers.hcft_view_handler import ViewHandler, menu_exit, menu_utilities_csv_joiner
 
 average_columns_editor = ui.TableEditor(
     sortable=False,
@@ -163,8 +161,7 @@ class HCFT(tr.HasStrictTraits):
             if os.path.exists(self.npy_folder_path) == False:
                 os.makedirs(self.npy_folder_path)
 
-            self.file_name = os.path.splitext(
-                os.path.basename(self.file_csv))[0]
+            self.file_name = os.path.splitext(os.path.basename(self.file_csv))[0]
 
         except Exception as e:
             self.deal_with_exception(e)
@@ -801,8 +798,14 @@ class HCFT(tr.HasStrictTraits):
         ),
         title='High-cycle fatigue tool',
         resizable=True,
-        width=0.85,
-        height=0.7
+        width=0.9,
+        height=0.9,
+        scrollable=True,
+        handler=ViewHandler(),
+        menubar=ui.MenuBar(
+            ui.Menu(menu_exit, name='File'),
+            ui.Menu(menu_utilities_csv_joiner, name='Utilities'),
+        )
     )
 
 
