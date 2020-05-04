@@ -276,4 +276,4 @@ class CSVJoiner(tr.HasStrictTraits):
 
 if __name__ == '__main__':
     csv_joiner = CSVJoiner()
-csv_joiner.configure_traits()
+    csv_joiner.configure_traits()

@@ -11,6 +11,7 @@ import os
 import string
 from threading import Thread
 import traceback
+import json
 
 from pyface.api import FileDialog, MessageDialog, OK
 from scipy.signal import savgol_filter
@@ -57,24 +58,25 @@ class ColumnsAverage(tr.HasStrictTraits):
 
 
 class PlotSettings(tr.HasStrictTraits):
-    first_rows = tr.Range(low=0, high=10**9, value=6000, mode='spinner')
-    distance = tr.Range(low=0, high=10**9, value=20000, mode='spinner')
+    first_rows = tr.Range(low=0, high=10 ** 9, value=6000, mode='spinner')
+    distance = tr.Range(low=0, high=10 ** 9, value=20000, mode='spinner')
     num_of_rows_after_each_distance = tr.Range(
-        low=0, high=10**9, value=200, mode='spinner')
+        low=0, high=10 ** 9, value=200, mode='spinner')
+
 
 class HCFT(tr.HasStrictTraits):
     '''High-Cycle Fatigue Tool
     '''
-    #=========================================================================
+    # =========================================================================
     # Traits definitions
-    #=========================================================================
+    # =========================================================================
     decimal = tr.Enum(',', '.')
     delimiter = tr.Str(';')
     records_per_second = tr.Float(100)
     take_time_from_time_column = tr.Bool(True)
     file_csv = tr.File
     open_file_csv = tr.Button('Input file')
-    skip_first_rows = tr.Range(low=1, high=10**9, value=3, mode='spinner')
+    skip_first_rows = tr.Range(low=1, high=10 ** 9, value=3, mode='spinner')
     columns_headers_list = tr.List([])
     x_axis = tr.Enum(values='columns_headers_list')
     y_axis = tr.Enum(values='columns_headers_list')
@@ -93,8 +95,8 @@ class HCFT(tr.HasStrictTraits):
     plot_every_nth_point = tr.Range(low=1, high=1000000, mode='spinner')
     old_peak_force_before_cycles = tr.Float
     peak_force_before_cycles = tr.Float
-    window_length = tr.Range(low=1, high=10**9 - 1, value=31, mode='spinner')
-    polynomial_order = tr.Range(low=1, high=10**9, value=2, mode='spinner')
+    window_length = tr.Range(low=1, high=10 ** 9 - 1, value=31, mode='spinner')
+    polynomial_order = tr.Range(low=1, high=10 ** 9, value=2, mode='spinner')
     activate = tr.Bool(False)
     add_plot = tr.Button
     add_creep_plot = tr.Button(desc='Creep plot of X axis array')
@@ -117,13 +119,12 @@ class HCFT(tr.HasStrictTraits):
         figure.set_tight_layout(True)
         return figure
 
-    #=========================================================================
+    # =========================================================================
     # File management
-    #=========================================================================
+    # =========================================================================
 
     def _open_file_csv_fired(self):
         try:
-
             self.reset()
 
             """ Handles the user clicking the 'Open...' button.
@@ -163,18 +164,21 @@ class HCFT(tr.HasStrictTraits):
 
             self.file_name = os.path.splitext(os.path.basename(self.file_csv))[0]
 
+            self.import_data_json()
+
         except Exception as e:
             self.deal_with_exception(e)
 
     def _parse_csv_to_npy_fired(self):
         # Run method on different thread so GUI doesn't freeze
-        #thread = Thread(target = threaded_function, function_args = (10,))
+        # thread = Thread(target = threaded_function, function_args = (10,))
         thread = Thread(target=self.parse_csv_to_npy_fired)
         thread.start()
 
     def parse_csv_to_npy_fired(self):
         try:
             self.print_custom('Parsing csv into npy files...')
+            self.export_data_json()
 
             for i in range(len(self.columns_headers_list) -
                            len(self.columns_to_be_averaged)):
@@ -187,7 +191,7 @@ class HCFT(tr.HasStrictTraits):
                         self.take_time_from_time_column == False:
                     column_array = np.arange(start=0.0,
                                              stop=len(column_array) /
-                                             self.records_per_second,
+                                                  self.records_per_second,
                                              step=1.0 / self.records_per_second)
 
                 np.save(os.path.join(self.npy_folder_path, self.file_name +
@@ -212,6 +216,49 @@ class HCFT(tr.HasStrictTraits):
             self.print_custom('Finsihed parsing csv into npy files.')
         except Exception as e:
             self.deal_with_exception(e)
+
+    def export_data_json(self):
+        output_data = {'take_time_from_time_column': self.take_time_from_time_column,
+                       'time_column': self.time_column,
+                       'records_per_second': self.records_per_second,
+                       'skip_first_rows': self.skip_first_rows,
+                       'columns_headers_list': self.columns_headers_list,
+                       'columns_to_be_averaged': self.columns_to_be_averaged,
+                       'x_axis': self.x_axis,
+                       'y_axis': self.y_axis,
+                       'x_axis_multiplier': self.x_axis_multiplier,
+                       'y_axis_multiplier': self.y_axis_multiplier,
+                       'force_column': self.force_column,
+                       'window_length': self.window_length,
+                       'polynomial_order': self.polynomial_order,
+                       'peak_force_before_cycles': self.peak_force_before_cycles,
+                       'cutting_method': self.cutting_method,
+                       'force_max': self.force_max,
+                       'force_min': self.force_min,
+                       'min_cycle_force_range': self.min_cycle_force_range}
+        with open(self.get_json_file_path(), 'w') as outfile:
+            json.dump(output_data, outfile, sort_keys=True, indent=4)
+        self.print_custom('.json data file exported successfully.')
+
+    def import_data_json(self):
+        json_path = self.get_json_file_path()
+        if not os.path.isfile(json_path):
+            return
+        # class_vars is a list with class variables names
+        # vars(self) & self.__dict__.items() didn't include some Trait variables like force_column = tr.Enum(values=..
+        class_vars = [attr for attr in dir(self) if not attr.startswith("_") and not attr.startswith("__")]
+        with open(json_path) as infile:
+            data_in = json.load(infile)
+        for key_data,  value_data in data_in.items():
+            for key_class in class_vars:
+                if key_data == key_class:
+                    # Equivalent to: self.key_class = value_data
+                    setattr(self, key_class, value_data)
+                    break
+        self.print_custom('.json data file imported successfully.')
+
+    def get_json_file_path(self):
+        return os.path.join(self.npy_folder_path, self.file_name + '.json')
 
     def get_suffex_for_columns_to_be_averaged(self, columns_names):
         suffex_for_saved_file_name = 'avg_' + '_'.join(columns_names)
@@ -252,15 +299,16 @@ class HCFT(tr.HasStrictTraits):
 
     def _generate_filtered_and_creep_npy_fired(self):
         # Run method on different thread so GUI doesn't freeze
-        #thread = Thread(target = threaded_function, function_args = (10,))
+        # thread = Thread(target = threaded_function, function_args = (10,))
         thread = Thread(target=self.generate_filtered_and_creep_npy_fired)
         thread.start()
 
     def generate_filtered_and_creep_npy_fired(self):
         try:
+            self.export_data_json()
             if self.npy_files_exist(os.path.join(
                     self.npy_folder_path, self.file_name + '_' + self.force_column
-                    + '.npy')) == False:
+                                          + '.npy')) == False:
                 return
 
             self.print_custom('Generating filtered and creep files...')
@@ -471,9 +519,9 @@ class HCFT(tr.HasStrictTraits):
                 message='Polynomial order must be smaller than window length.')
             dialog.open()
 
-    #=========================================================================
+    # =========================================================================
     # Plotting
-    #=========================================================================
+    # =========================================================================
 
     def _plot_settings_btn_fired(self):
         try:
@@ -501,7 +549,7 @@ class HCFT(tr.HasStrictTraits):
 
     def _add_plot_fired(self):
         # Run method on different thread so GUI doesn't freeze
-        #thread = Thread(target = threaded_function, function_args = (10,))
+        # thread = Thread(target = threaded_function, function_args = (10,))
         thread = Thread(target=self.add_plot_fired)
         thread.start()
 
@@ -510,7 +558,7 @@ class HCFT(tr.HasStrictTraits):
             if self.apply_filters:
                 if self.filtered_and_creep_npy_files_exist(os.path.join(
                         self.npy_folder_path, self.file_name + '_' + self.x_axis
-                        + '_filtered.npy')) == False:
+                                              + '_filtered.npy')) == False:
                     return
                 x_axis_name = self.x_axis + '_filtered'
                 y_axis_name = self.y_axis + '_filtered'
@@ -527,7 +575,7 @@ class HCFT(tr.HasStrictTraits):
             else:
                 if self.npy_files_exist(os.path.join(
                         self.npy_folder_path, self.file_name + '_' + self.x_axis
-                        + '.npy')) == False:
+                                              + '.npy')) == False:
                     return
 
                 x_axis_name = self.x_axis
@@ -567,7 +615,7 @@ class HCFT(tr.HasStrictTraits):
             ax.set_ylabel(y_axis_name)
             ax.plot(x_axis_array, y_axis_array, 'k',
                     linewidth=1.2, color=np.random.rand(3), label=self.file_name +
-                    ', ' + x_axis_name)
+                                                                  ', ' + x_axis_name)
 
             ax.legend()
             self.data_changed = True
@@ -578,7 +626,7 @@ class HCFT(tr.HasStrictTraits):
 
     def _add_creep_plot_fired(self):
         # Run method on different thread so GUI doesn't freeze
-        #thread = Thread(target = threaded_function, function_args = (10,))
+        # thread = Thread(target = threaded_function, function_args = (10,))
         thread = Thread(target=self.add_creep_plot_fired)
         thread.start()
 
@@ -586,16 +634,16 @@ class HCFT(tr.HasStrictTraits):
         try:
             if self.filtered_and_creep_npy_files_exist(os.path.join(
                     self.npy_folder_path, self.file_name + '_' + self.x_axis
-                    + '_max.npy')) == False:
+                                          + '_max.npy')) == False:
                 return
 
             self.print_custom('Loading npy files...')
             disp_max = self.x_axis_multiplier * \
-                np.load(os.path.join(self.npy_folder_path,
-                                     self.file_name + '_' + self.x_axis + '_max.npy'))
+                       np.load(os.path.join(self.npy_folder_path,
+                                            self.file_name + '_' + self.x_axis + '_max.npy'))
             disp_min = self.x_axis_multiplier * \
-                np.load(os.path.join(self.npy_folder_path,
-                                     self.file_name + '_' + self.x_axis + '_min.npy'))
+                       np.load(os.path.join(self.npy_folder_path,
+                                            self.file_name + '_' + self.x_axis + '_min.npy'))
             complete_cycles_number = disp_max.size
 
             self.print_custom('Adding creep-fatigue plot...')
@@ -628,19 +676,19 @@ class HCFT(tr.HasStrictTraits):
             if self.normalize_cycles:
                 ax.plot(np.linspace(0, 1., disp_max.size), disp_max,
                         'k', linewidth=1.2, color=np.random.rand(3), label='Max'
-                        + ', ' + self.file_name + ', ' + self.x_axis)
+                                                                           + ', ' + self.file_name + ', ' + self.x_axis)
                 ax.plot(np.linspace(0, 1., disp_min.size), disp_min,
                         'k', linewidth=1.2, color=np.random.rand(3), label='Min'
-                        + ', ' + self.file_name + ', ' + self.x_axis)
+                                                                           + ', ' + self.file_name + ', ' + self.x_axis)
             else:
                 ax.plot(np.linspace(0, complete_cycles_number,
                                     disp_max.size), disp_max,
                         'k', linewidth=1.2, color=np.random.rand(3), label='Max'
-                        + ', ' + self.file_name + ', ' + self.x_axis)
+                                                                           + ', ' + self.file_name + ', ' + self.x_axis)
                 ax.plot(np.linspace(0, complete_cycles_number,
                                     disp_min.size), disp_min,
                         'k', linewidth=1.2, color=np.random.rand(3), label='Min'
-                        + ', ' + self.file_name + ', ' + self.x_axis)
+                                                                           + ', ' + self.file_name + ', ' + self.x_axis)
 
             ax.legend()
             self.data_changed = True
@@ -677,7 +725,7 @@ class HCFT(tr.HasStrictTraits):
             self.log = ''.join(str(e) for e in list(input_args))
         else:
             self.log = self.log + '\n' + \
-                ''.join(str(e) for e in list(input_args))
+                       ''.join(str(e) for e in list(input_args))
 
     def deal_with_exception(self, e):
         self.print_custom('SOMETHING WENT WRONG!')
@@ -688,9 +736,9 @@ class HCFT(tr.HasStrictTraits):
     def _clear_log_fired(self):
         self.log = ''
 
-    #=========================================================================
+    # =========================================================================
     # Configuration of the view
-    #=========================================================================
+    # =========================================================================
     traits_view = ui.View(
         ui.HSplit(
             ui.VSplit(
