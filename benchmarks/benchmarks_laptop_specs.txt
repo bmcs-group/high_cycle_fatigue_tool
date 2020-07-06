@@ -1,0 +1,7 @@
+Used Laptop specs:
+-------------------
+Hard disk: Crucial MX500 500GB SATA 2.5 inch Internal SSD (CT500MX500SSD1)
+Ram: 8.00 GB
+CPU: Intel(R) Core(TM) i5-4200U @ 1.6GHz 2.3 GHz
+OS: Windows 10 64-bit
+-------------------

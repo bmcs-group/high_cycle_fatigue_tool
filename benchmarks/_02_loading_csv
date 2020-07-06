@@ -1,0 +1,11 @@
+benchmark_data uses 3 * 10 ** 7 column size
+
+** for loading 1 column **
+
+Reading csv file using read_csv= 14.043362776438395
+
+Reading csv file using read_csv with initializing numpy array= 14.371915896733602
+
+Reading csv file using genfromtxt= 196.80293758710226
+
+Reading csv file using loadtxt= 370.14712357521057

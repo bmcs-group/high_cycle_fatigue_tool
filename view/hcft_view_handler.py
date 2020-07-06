@@ -14,6 +14,7 @@ menu_utilities_csv_joiner = ui.Action(name='CSV Joiner', action='menu_utilities_
 
 class ViewHandler(ui.Handler):
 
+    # You can initialize this by obtaining it from the methods below and, self.info = info
     info = tr.Instance(ui.UIInfo)
 
     exit_view = ui.View(
@@ -59,5 +60,4 @@ class ViewHandler(ui.Handler):
 
     def menu_exit(self, info):
         if info.initialized:
-            self.info = info
-            self._ui = self.edit_traits(view='exit_view')
+            info.ui.dispose()

@@ -1,0 +1,9 @@
+Saving array with two columns each with a size
+size = 3 * 10 ** 7
+
+Average (save_hdf_using_pd_to_hdf) impl time = 20.53904656569163 sec
+725.610 Mb
+
+
+Average (save_hdf_using_h5py) impl time = 1.909256386756897 sec
+480.002 Mb

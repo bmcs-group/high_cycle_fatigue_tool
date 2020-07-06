@@ -134,6 +134,3 @@ dmypy.json
 
 .idea/vcs.xml
 
-test_notebook.ipynb
-
-utils/test.py

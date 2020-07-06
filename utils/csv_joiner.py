@@ -138,10 +138,10 @@ class CSVFile(tr.HasStrictTraits):
                   ui.Item('_lines_number', style='readonly',
                           visible_when='show_lines_number == True')),
         ui.VSplit(
-            ui.HGroup(ui.UItem('first_lines', style='custom'),
+            ui.HGroup(ui.Item('first_lines', style='custom'),
                       'first_lines_to_skip',
                       label='First lines in the file'),
-            ui.HGroup(ui.UItem('last_lines', style='custom'),
+            ui.HGroup(ui.Item('last_lines', style='custom'),
                       'last_lines_to_skip',
                       label='Last lines in the file')
         ))
@@ -264,14 +264,13 @@ class CSVJoiner(tr.HasStrictTraits):
                 ui.UItem('join_csv_files', width=150),
                 ui.UItem('progress', editor=ProgressEditor(min=0, max=100))
             ),
-        show_border=True
-    ),
-    title = 'CSV files joiner',
-    resizable = True,
-    width = 0.6,
-    height = 0.7
-
-)
+            show_border=True
+        ),
+        title='CSV files joiner',
+        resizable=True,
+        width=0.6,
+        height=0.7
+    )
 
 
 if __name__ == '__main__':

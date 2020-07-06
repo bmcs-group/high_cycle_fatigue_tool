@@ -1,0 +1,4 @@
+Saving array with two columns each with a size
+size = 3 * 10 ** 7
+
+Saving numpy array to disk using np.save()= 1.4780860741933186
