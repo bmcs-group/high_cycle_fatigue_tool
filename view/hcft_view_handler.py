@@ -4,6 +4,7 @@ import pickle
 import os
 from traitsui.file_dialog import open_file, save_file
 
+from about_tool import AboutTool
 from utils.csv_joiner import CSVJoiner
 
 menu_exit = ui.Action(name='Exit', action='menu_exit')
@@ -11,6 +12,8 @@ menu_save = ui.Action(name='Save', action='menu_save')
 menu_open = ui.Action(name='Open', action='menu_open')
 
 menu_utilities_csv_joiner = ui.Action(name='CSV Joiner', action='menu_utilities_csv_joiner')
+
+menu_about_tool = ui.Action(name='About', action='menu_about_tool')
 
 class ViewHandler(ui.Handler):
 
@@ -34,6 +37,10 @@ class ViewHandler(ui.Handler):
         csv_joiner = CSVJoiner()
         # kind='modal' pauses the background traits window until this window is closed
         csv_joiner.configure_traits(kind='modal')
+
+    def menu_about_tool(self):
+        about_tool = AboutTool()
+        about_tool.configure_traits()
 
     def get_outfile(self, folder_name, file_name):
         '''Returns a file in the specified folder using the home

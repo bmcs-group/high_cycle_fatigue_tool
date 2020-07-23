@@ -247,7 +247,8 @@ class CSVJoiner(tr.HasStrictTraits):
             ui.UItem('open_csv_files', width=150),
             ui.HGroup(ui.Item('num_of_first_lines_to_show'), ui.spring),
             ui.HGroup(ui.Item('num_of_last_lines_to_show'), ui.spring),
-            ui.HGroup(ui.Item('files_end_with_empty_line'), ui.Item('accumulate_time', enabled_when='False'),
+            ui.HGroup(ui.Item('files_end_with_empty_line'),
+                      # ui.Item('accumulate_time', enabled_when='False'),
                       ui.spring),
             ui.VGroup(
                 ui.Item('csv_files',

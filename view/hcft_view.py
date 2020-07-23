@@ -1,7 +1,7 @@
 import traitsui.api as ui
 from util.traits.editors import MPLFigureEditor
 
-from view.hcft_view_handler import ViewHandler, menu_exit, menu_utilities_csv_joiner
+from view.hcft_view_handler import ViewHandler, menu_exit, menu_utilities_csv_joiner, menu_about_tool
 
 # =========================================================================
 # Configuration of the views
@@ -123,7 +123,7 @@ hcft_window = ui.View(
                     filters_view_group,
                     plot_figure_view
                 ),
-                title='High-cycle fatigue tool',
+                title='High-Cycle Fatigue Tool',
                 resizable=True,
                 width=0.9,
                 height=0.9,
@@ -132,5 +132,6 @@ hcft_window = ui.View(
                 menubar=ui.MenuBar(
                     ui.Menu(menu_exit, name='File'),
                     ui.Menu(menu_utilities_csv_joiner, name='Utilities'),
+                    ui.Menu(menu_about_tool, name='Help'),
                 )
             )

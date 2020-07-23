@@ -63,7 +63,7 @@ build_exe_options = {
 }
 
 executables = [
-    Executable(r'C:\Users\hspartali\eclipse-workspace\high-cycle-fatigue-tool\hcft.py',
+    Executable(r'D:\Homam\Synced\Programming\Python\high-cycle-fatigue-tool\hcft.py',
                targetName="hcft.exe", base='Win32GUI')
 ]
 

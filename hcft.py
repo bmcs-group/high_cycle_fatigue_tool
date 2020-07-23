@@ -524,14 +524,14 @@ class HCFT(tr.HasStrictTraits):
                                                     + '.npy'), mmap_mode='r')
 
             if self.plot_settings_active:
-                print(self.plot_settings.first_rows)
-                print(self.plot_settings.distance)
-                print(self.plot_settings.num_of_rows_after_each_distance)
+                print(self.plot_settings.num_of_first_rows_to_take)
+                print(self.plot_settings.num_of_rows_to_skip_after_each_section)
+                print(self.plot_settings.num_of_rows_in_each_section)
                 print(np.size(x_axis_array))
                 indices = self.get_indices_array(np.size(x_axis_array),
-                                                 self.plot_settings.first_rows,
-                                                 self.plot_settings.distance,
-                                                 self.plot_settings.num_of_rows_after_each_distance)
+                                                 self.plot_settings.num_of_first_rows_to_take,
+                                                 self.plot_settings.num_of_rows_to_skip_after_each_section,
+                                                 self.plot_settings.num_of_rows_in_each_section)
                 x_axis_array = self.x_axis_multiplier * x_axis_array[indices]
                 y_axis_array = self.y_axis_multiplier * y_axis_array[indices]
             else:

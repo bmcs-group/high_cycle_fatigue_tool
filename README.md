@@ -1,4 +1,4 @@
-# High-Cycle-Fatigue-Tool (HCFT)
+# High-Cycle-Fatigue-Tool (HCFT or HcFatFit)
 A tool with GUI (Graphical User Interface) for processing CSV files obtained from fatigue experiments up to the high-cycle fatigue ranges. Additionally, tests with monotonic loading can be processed.
 
 ## Features:
