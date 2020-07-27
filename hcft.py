@@ -24,7 +24,6 @@ from helper_classes.csv_tools import get_headers
 from helper_classes.plot_filtering_settings import PlotSettings
 from view.hcft_view import hcft_window
 
-
 # noinspection PyTypeChecker,DuplicatedCode,PyMethodMayBeStatic
 class HCFT(tr.HasStrictTraits):
     """High-Cycle Fatigue Tool"""
@@ -75,6 +74,10 @@ class HCFT(tr.HasStrictTraits):
     clear_log = tr.Button
     # Assigning the view
     traits_view = hcft_window
+
+    # def __init__(self):
+    #     from traits.etsconfig.api import ETSConfig
+    #     ETSConfig.toolkit = 'qt4'
 
     # =========================================================================
     # Assigning default values

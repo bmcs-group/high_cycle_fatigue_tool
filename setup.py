@@ -5,9 +5,7 @@ import cx_Freeze.hooks
 import matplotlib
 import scipy
 
-
 scipy_path = os.path.dirname(scipy.__file__)
-
 
 PYTHON_INSTALL_DIR = os.path.dirname(os.path.dirname(os.__file__))
 
@@ -58,6 +56,8 @@ build_exe_options = {
     # to fix a bug in importing this module
     "excludes": ['scipy.spatial.cKDTree'],
     "includes": [],
+
+    "build_exe": r'D:\cx_freeze_build_exe',
 
     "include_files": folders  # .append((str(scipy_path), 'scipy'))
 }
