@@ -1,7 +1,7 @@
 # High-Cycle-Fatigue-Tool (HCFT or HcFatFit)
 A tool with GUI (Graphical User Interface) for processing CSV files obtained from fatigue experiments up to the high-cycle fatigue ranges. Additionally, tests with monotonic loading can be processed.
 
-### Features:
+## Features:
 1. Simple plot functionality for columns of the CSV file.
 2. Extracting Max and Min values and filtering the undesired cycles.
 3. Extracting and plotting the fatigue creep curve (cycles number vs displacement).
@@ -10,7 +10,7 @@ A tool with GUI (Graphical User Interface) for processing CSV files obtained fro
 6. Built-in tool for joining CSV (or TXT) files.
 7. Graphical User Interface with all functions and parameters
 
-### Usage:
+## Usage:
 <ul>
 <li><b>Option 1 (Installing Python environment with all needed libraries)</b><br>
 <ul>
@@ -52,11 +52,11 @@ Windows 32bit: <a href="https://github.com/ishomam/high-cycle-fatigue-tool/relea
 </ul>
 
 
-### Cite with: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3603817.svg)](https://doi.org/10.5281/zenodo.3603816)
+## Cite with: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3603817.svg)](https://doi.org/10.5281/zenodo.3603816)
 The repository can refered to using a unique doi hosted at https://zenodo.org
 
 
-### Screenshots:
+## Screenshots:
 ![](screenshots/High_Cycle_Fatigue_Tool.png "HCFT tool")
 
 ![](screenshots/CSV_files_joiner.png "built-in CSV joiner tool")
