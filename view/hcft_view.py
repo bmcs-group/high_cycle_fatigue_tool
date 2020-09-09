@@ -12,8 +12,8 @@ import_csv_view_group = ui.VGroup(
         ui.Item('decimal'),
         ui.Item('delimiter'),
         ui.HGroup(
-            ui.UItem('open_file_csv', has_focus=True),
-            ui.UItem('file_csv', style='readonly', width=0.1)),
+            ui.UItem('open_file_button', has_focus=True),
+            ui.UItem('file_path', style='readonly', width=0.1)),
         label='Importing csv file',
         show_border=True))
 
@@ -25,7 +25,7 @@ processing_csv_view_group = ui.VGroup(
                                                 enabled_when='take_time_from_time_column == True'),
                                         ui.Item('records_per_second',
                                                 enabled_when='take_time_from_time_column == False'),
-                                        label='Time calculation',
+                                        label='Time processing',
                                         show_border=True),
                                     ui.UItem('add_columns_average'),
                                     ui.Item('skip_first_rows'),
@@ -69,14 +69,14 @@ filters_view_group = ui.VGroup(
                         ui.VGroup(ui.VGroup(
                             ui.Item('window_length'),
                             ui.Item('polynomial_order'),
-                            enabled_when='activate == True or smooth == True'),
+                            enabled_when='activate_ascending_branch_smoothing == True or smooth == True'),
                             show_border=True,
                             label='Smoothing parameters (Savitzky-Golay filter):'
                         ),
                         ui.VGroup(ui.VGroup(
-                            ui.Item('activate'),
+                            ui.Item('activate_ascending_branch_smoothing'),
                             ui.Item('peak_force_before_cycles',
-                                    enabled_when='activate == True')),
+                                    enabled_when='activate_ascending_branch_smoothing == True')),
                             show_border=True,
                             label='Smooth ascending branch for all displacements:'
                         ),

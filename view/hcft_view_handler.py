@@ -36,7 +36,7 @@ class ViewHandler(ui.Handler):
     def menu_utilities_csv_joiner(self):
         csv_joiner = CSVJoiner()
         # kind='modal' pauses the background traits window until this window is closed
-        csv_joiner.configure_traits(kind='modal')
+        csv_joiner.configure_traits()
 
     def menu_about_tool(self):
         about_tool = AboutTool()
