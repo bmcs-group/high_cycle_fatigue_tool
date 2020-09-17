@@ -31,9 +31,12 @@ Install Miniconda <a href="https://docs.conda.io/en/latest/miniconda.html">(down
 
 </li>
 
+<li>Clone this repository or download its contents
+</li>
+
 <li>Run the tool using the command
 
-`python DIRECTORY_TO_THE_TOOL/hcft.py`
+`python PATH_TO_THE_TOOL_REPOSITORY/hcft.py`
 
 
 </li>
