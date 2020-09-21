@@ -101,11 +101,7 @@ class HCFT(tr.HasStrictTraits):
         try:
             self.reset()
 
-            extensions = ['*.csv', '*.txt']  # handle only one extension...
-            wildcard = ';'.join(extensions)
-            dialog = FileDialog(title='Select text file',
-                                action='open', wildcard=wildcard,
-                                default_path=self.file_path)
+            dialog = FileDialog(title='Select text file', action='open', default_path=self.file_path)
             result = dialog.open()
 
             # Test if the user opened a file to avoid throwing an exception if he doesn't
