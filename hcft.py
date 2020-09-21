@@ -660,6 +660,7 @@ class HCFT(tr.HasStrictTraits):
         self.columns_to_be_averaged = []
         self.log = ''
 
+
 if __name__ == '__main__':
     hcft = HCFT(file_path=os.path.expanduser("~"))
     hcft.configure_traits()
