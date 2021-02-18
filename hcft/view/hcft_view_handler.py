@@ -4,8 +4,8 @@ import pickle
 import os
 from traitsui.file_dialog import open_file, save_file
 
-from about_tool import AboutTool
-from utils.csv_joiner import CSVJoiner
+from hcft.about_tool import AboutTool
+from hcft.utils.csv_joiner import CSVJoiner
 
 menu_exit = ui.Action(name='Exit', action='menu_exit')
 menu_save = ui.Action(name='Save', action='menu_save')

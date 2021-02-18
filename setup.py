@@ -1,75 +1,158 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# Note: To use the 'upload' functionality of this file, you must:
+#   $ pip install twine
+
+import io
 import os
 import sys
-from cx_Freeze import setup, Executable
-import cx_Freeze.hooks
-import matplotlib
-import scipy
+from shutil import rmtree
 
-scipy_path = os.path.dirname(scipy.__file__)
+from setuptools import find_packages, setup, Command
+from hcft.version import __version__
 
-PYTHON_INSTALL_DIR = os.path.dirname(os.path.dirname(os.__file__))
+# Package meta-data.
+NAME = 'hcft'
+DESCRIPTION = "High Cycle Fatigue Tool."
+URL = 'https://github.com/bmcs-group/high_cycle_fatigue'
+EMAIL = 'hspartali@imb.rwt-aachen.de'
+AUTHOR = 'H. Spartali & BMCS-Group'
+REQUIRES_PYTHON = '>=3.6.0'
+VERSION = __version__
 
-packages_to_fetch = [
-    'mayavi',
-    'numpy',
-    'six',
-    'pyface',
-    'traits',
-    'traitsui'
+# What packages are required for this module to be executed?
+REQUIRED = [
+    # 'requests', 'maya', 'records',
 ]
-base_path = os.path.join(PYTHON_INSTALL_DIR, 'Lib', 'site-packages')
 
-folders = list(next(os.walk(base_path))[1])
-folders = [fol for fol in folders if fol.endswith('-info')]
-folders = [fol for fol in folders if fol.split(
-    '-')[0].lower() in packages_to_fetch]
-out = [f for f in folders]
-folders = [os.path.join(base_path, fol) for fol in folders]
-folders = [(fol, '.\lib' + '\\' + out[k]) for k, fol in enumerate(folders)]
-
-build_exe_options = {
-    "packages": ['sys',
-                 'os',
-                 #                  'numpy',
-                 #                  'mayavi',
-                 'pygments',
-                 #                  'traitsui.qt4.toolkit',
-                 'pathlib',
-                 'scipy',
-                 'string',
-                 'pyface',
-                 'matplotlib',
-                 'pandas',
-                 'util.traits'
-                 #                  'mayavi.core',
-                 #                  'mayavi.core.ui',
-                 #                  'mayavi.core.ui.api',
-                 #                  "pyface.ui.qt4",
-                 #                  "matplotlib.backends.backend_qt4",
-                 #                  'pyface.qt',
-                 #                  "tvtk.vtk_module",
-                 #                  "tvtk.pyface.ui.wx",
-                 #                  'tvtk.pyface.ui.qt4',
-                 #                  'pyface.qt.QtGui',
-                 #                  'pyface.qt.QtCore'
-                 ],
-    # to fix a bug in importing this module
-    "excludes": ['scipy.spatial.cKDTree'],
-    "includes": [],
-
-    "build_exe": r'D:\cx_freeze_build_exe',
-
-    "include_files": folders  # .append((str(scipy_path), 'scipy'))
+# What packages are optional?
+EXTRAS = {
+    # 'fancy feature': ['django'],
 }
 
-executables = [
-    Executable(r'D:\Homam\Synced\Programming\Python\high-cycle-fatigue-tool\hcft.py',
-               targetName="hcft.exe", base='Win32GUI')
-]
+# The rest you shouldn't have to touch too much :)
+# ------------------------------------------------
+# Except, perhaps the License and Trove Classifiers!
+# If you do change the License, remember to change the Trove Classifier for that!
 
-setup(name='hcft',
-      version='1.0',
-      description='',
-      options={"build_exe": build_exe_options},
-      executables=executables
-      )
+here = os.path.abspath(os.path.dirname(__file__))
+
+# Import the README and use it as the long-description.
+# Note: this will only work if 'README.md' is present in your MANIFEST.in file!
+try:
+    with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
+        long_description = '\n' + f.read()
+except FileNotFoundError:
+    long_description = DESCRIPTION
+
+# Load the package's __version__.py module as a dictionary.
+about = {}
+if not VERSION:
+    with open(os.path.join(here, NAME, '__version__.py')) as f:
+        exec(f.read(), about)
+else:
+    about['__version__'] = VERSION
+
+
+class UploadCommand(Command):
+    """Support setup.py upload."""
+
+    description = 'Build the package.'
+    user_options = []
+
+    @staticmethod
+    def status(s):
+        """Prints things in bold."""
+        print('\033[1m{0}\033[0m'.format(s))
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        try:
+            self.status('Removing previous builds…')
+            rmtree(os.path.join(here, 'dist'))
+        except OSError:
+            pass
+
+        self.status('Building Source and Wheel (universal) distribution…')
+        os.system('{0} setup.py sdist bdist_wheel --universal'.format(sys.executable))
+
+        self.status('Uploading the package to PyPI via Twine…')
+        os.system('twine upload dist/*')
+
+        sys.exit()
+
+class ReleaseCommand(Command):
+    """Support setup.py upload."""
+
+    description = 'Release the package.'
+    user_options = []
+
+    @staticmethod
+    def status(s):
+        """Prints things in bold."""
+        print('\033[1m{0}\033[0m'.format(s))
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        try:
+            self.status('Removing previous builds…')
+            rmtree(os.path.join(here, 'dist'))
+        except OSError:
+            pass
+
+        self.status('Pushing git tags…')
+        os.system('git tag v{0}'.format(about['__version__']))
+        os.system('git push --tags')
+
+        sys.exit()
+
+
+# Where the magic happens:
+setup(
+    name=NAME,
+    version=about['__version__'],
+    description=DESCRIPTION,
+    long_description=long_description,
+    long_description_content_type='text/markdown',
+    author=AUTHOR,
+    author_email=EMAIL,
+    python_requires=REQUIRES_PYTHON,
+    url=URL,
+    packages=find_packages(exclude=('tests',)),
+    # If your package is a single module, use this instead of 'packages':
+    # py_modules=['mypackage'],
+
+    # entry_points={
+    #     'console_scripts': ['mycli=mymodule:cli'],
+    # },
+    install_requires=REQUIRED,
+    extras_require=EXTRAS,
+    include_package_data=True,
+    license='MIT',
+    classifiers=[
+        # Trove classifiers
+        # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: Implementation :: CPython',
+        'Programming Language :: Python :: Implementation :: PyPy'
+    ],
+    # $ setup.py publish support.
+    cmdclass={
+        'upload': UploadCommand,
+        'release': ReleaseCommand
+    },
+)

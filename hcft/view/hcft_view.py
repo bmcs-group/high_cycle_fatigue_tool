@@ -1,7 +1,7 @@
 import traitsui.api as ui
-from util.traits.editors import MPLFigureEditor
+from hcft.utils.mpl_figure_editor_qt import MPLFigureEditor
 
-from view.hcft_view_handler import ViewHandler, menu_exit, menu_utilities_csv_joiner, menu_about_tool
+from hcft.view.hcft_view_handler import ViewHandler, menu_exit, menu_utilities_csv_joiner, menu_about_tool
 
 # =========================================================================
 # Configuration of the views
