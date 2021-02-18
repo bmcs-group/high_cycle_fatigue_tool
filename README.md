@@ -31,9 +31,12 @@ Install Miniconda <a href="https://docs.conda.io/en/latest/miniconda.html">(down
 
 </li>
 
+<li>Clone this repository or download its contents
+</li>
+
 <li>Run the tool using the command
 
-`python DIRECTORY_TO_THE_TOOL/hcft.py`
+`python PATH_TO_THE_TOOL_REPOSITORY/hcft.py`
 
 
 </li>
@@ -52,7 +55,7 @@ Windows 32bit: <a href="https://github.com/ishomam/high-cycle-fatigue-tool/relea
 </ul>
 
 
-## Cite with: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3603817.svg)](https://doi.org/10.5281/zenodo.3603816)
+## Cite with: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3603816.svg)](https://doi.org/10.5281/zenodo.3603816)
 The repository can refered to using a unique doi hosted at https://zenodo.org
 
 

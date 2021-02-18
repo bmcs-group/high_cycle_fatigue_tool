@@ -101,11 +101,7 @@ class HCFT(tr.HasStrictTraits):
         try:
             self.reset()
 
-            extensions = ['*.csv', '*.txt']  # handle only one extension...
-            wildcard = ';'.join(extensions)
-            dialog = FileDialog(title='Select text file',
-                                action='open', wildcard=wildcard,
-                                default_path=self.file_path)
+            dialog = FileDialog(title='Select text file', action='open', default_path=self.file_path)
             result = dialog.open()
 
             # Test if the user opened a file to avoid throwing an exception if he doesn't
@@ -166,8 +162,12 @@ class HCFT(tr.HasStrictTraits):
             """ Exporting npy arrays of original columns """
             for i in range(len(self.columns_headers) - len(self.columns_to_be_averaged)):
                 column_name = self.columns_headers[i]
-                column_array = np.array(pd.read_csv(self.file_path, delimiter=self.delimiter, decimal=self.decimal,
-                                                    skiprows=self.skip_first_rows, usecols=[i]))
+                # One could provide the path directly to pd.read_csv but in this way we insure that this works also if the
+                # path to the file include chars like ü,ä
+                # (with) makes sure the file stream is closed after using it
+                with open(self.file_path, encoding='utf-8') as file_stream:
+                    column_array = np.array(pd.read_csv(file_stream, delimiter=self.delimiter, decimal=self.decimal,
+                                                        skiprows=self.skip_first_rows, usecols=[i]))
 
                 # TODO detect column name before loading completely to skip loading if the following condition applies
                 if column_name == self.time_column and self.take_time_from_time_column is False:
