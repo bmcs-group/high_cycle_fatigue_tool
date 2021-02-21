@@ -1,4 +1,4 @@
-name: hcft
+name: bmcs_env
 channels:
 - conda-forge
 dependencies:
@@ -12,7 +12,8 @@ dependencies:
 - traitsui
 - pyqt
 - pyface
-- ipyml
+- ipympl
 - pandas
-
-
+- pip
+- pip:
+    - -e .
