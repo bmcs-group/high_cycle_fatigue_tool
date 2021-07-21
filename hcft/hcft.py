@@ -87,12 +87,17 @@ class HCFT(tr.HasStrictTraits):
     # =========================================================================
     # Assigning default values
     # =========================================================================
+    ax = tr.Any
     figure = tr.Instance(mpl.figure.Figure)
 
     def _figure_default(self):
         figure = mpl.figure.Figure(facecolor='white')
         figure.set_tight_layout(True)
+        self.create_axes(figure)
         return figure
+
+    def create_axes(self, figure):
+        self.ax = figure.add_subplot(1, 1, 1)
 
     # =========================================================================
     # File management
@@ -534,14 +539,14 @@ class HCFT(tr.HasStrictTraits):
             self.print_custom('Adding Plot...')
             mpl.rcParams['agg.path.chunksize'] = 10000
 
-            ax = self.figure.add_subplot(1, 1, 1)
+            ax = self.ax
 
             ax.set_xlabel(x_axis_name)
             ax.set_ylabel(y_axis_name)
-            ax.plot(x_axis_array, y_axis_array, 'k', linewidth=1.2, color=np.random.rand(3),
+            ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color=np.random.rand(3),
                     label=self.file_name + ', ' + x_axis_name)
-
             ax.legend()
+
             self.data_changed = True
             self.print_custom('Finished adding plot.')
 
@@ -567,7 +572,7 @@ class HCFT(tr.HasStrictTraits):
             self.print_custom('Adding creep-fatigue plot...')
             mpl.rcParams['agg.path.chunksize'] = 10000
 
-            ax = self.figure.add_subplot(1, 1, 1)
+            ax = self.ax
 
             ax.set_xlabel('Cycles number')
             ax.set_ylabel(self.x_axis)
@@ -631,6 +636,7 @@ class HCFT(tr.HasStrictTraits):
 
     def _clear_plot_fired(self):
         self.figure.clear()
+        self.create_axes(self.figure)
         self.data_changed = True
 
     # =========================================================================
