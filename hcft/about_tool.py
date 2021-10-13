@@ -12,7 +12,7 @@ import os
 from itertools import takewhile, repeat
 
 from pyface.message_dialog import MessageDialog
-from traitsui.editors import ProgressEditor
+from traitsui.editors.api import ProgressEditor
 
 
 class AboutTool(tr.HasStrictTraits):
