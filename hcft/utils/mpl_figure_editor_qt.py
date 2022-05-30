@@ -18,7 +18,7 @@ from matplotlib.backends.backend_qt5agg import \
 from matplotlib.figure import Figure
 from pyface.qt import QtGui
 from traits.api import Instance
-from traitsui.qt4.basic_editor_factory import BasicEditorFactory
+from traitsui.basic_editor_factory import BasicEditorFactory
 from traitsui.qt4.editor import Editor
 
 
