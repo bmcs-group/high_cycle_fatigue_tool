@@ -170,7 +170,7 @@ class HCFT(tr.HasStrictTraits):
                 # One could provide the path directly to pd.read_csv but in this way we insure that this works also if the
                 # path to the file include chars like ü,ä
                 # (with) makes sure the file stream is closed after using it
-                with open(self.file_path, encoding='utf-8') as file_stream:
+                with open(self.file_path, encoding='unicode_escape') as file_stream:
                     column_array = np.array(pd.read_csv(file_stream, delimiter=self.delimiter, decimal=self.decimal,
                                                         skiprows=self.skip_first_rows, usecols=[i]))
 
