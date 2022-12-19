@@ -61,6 +61,7 @@ plotting_view_group = ui.VGroup(
                                 label='Plotting Creep-fatigue of X axis variable'
                             ),
                             ui.UItem('clear_plot', resizable=True),
+                            ui.UItem('export_plot', label='Export plot as CSV', resizable=True),
                             show_border=True,
                             label='Plotting'))
 

@@ -69,6 +69,10 @@ class HCFT(tr.HasStrictTraits):
     peak_force_before_cycles = tr.Float
     add_creep_plot = tr.Button(desc='Creep plot of X axis array')
     clear_plot = tr.Button
+    export_plot = tr.Button
+
+    plot_x_array = tr.Array
+    plot_y_array = tr.Array
 
     force_column = tr.Enum(values='columns_headers')
     window_length = tr.Range(low=1, high=10 ** 9 - 1, value=31, mode='spinner')
@@ -543,6 +547,8 @@ class HCFT(tr.HasStrictTraits):
 
             ax.set_xlabel(x_axis_name)
             ax.set_ylabel(y_axis_name)
+            self.plot_x_array = x_axis_array
+            self.plot_y_array = y_axis_array
             ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color=np.random.rand(3),
                     label=self.file_name + ', ' + x_axis_name)
             ax.legend()
@@ -593,7 +599,7 @@ class HCFT(tr.HasStrictTraits):
                 ))
 
             if self.normalize_cycles:
-                ax.plot(np.linspace(0, 1., disp_max.size), disp_max,
+                x_array = ax.plot(np.linspace(0, 1., disp_max.size), disp_max,
                         'k', linewidth=1.2, color=np.random.rand(3), label='Max'
                                                                            + ', ' + self.file_name + ', ' + self.x_axis)
                 ax.plot(np.linspace(0, 1., disp_min.size), disp_min,
@@ -638,6 +644,15 @@ class HCFT(tr.HasStrictTraits):
         self.figure.clear()
         self.create_axes(self.figure)
         self.data_changed = True
+
+    def _export_plot_fired(self):
+        if len(self.plot_x_array) != 0 and len(self.plot_y_array) != 0:
+            # Export CSV
+            self.plot_x_array
+            self.plot_y_array
+        else:
+            self.print_custom('Please plot the required curve first.')
+
 
     # =========================================================================
     # Logging
