@@ -39,6 +39,7 @@ plotting_view_group = ui.VGroup(
                             ui.HGroup(ui.Item('y_axis'), ui.Item('y_axis_multiplier')),
                             ui.VGroup(
                                 ui.HGroup(ui.UItem('add_plot'),
+                                            ui.UItem('save_plot'),
                                           ui.Item('apply_filters'),
                                           ui.Item('plot_settings_btn',
                                                   label='Settings',
