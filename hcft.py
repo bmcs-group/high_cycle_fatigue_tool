@@ -12,6 +12,8 @@ import os
 import traceback
 from threading import Thread
 
+import pdb
+from tkinter import filedialog, Tk
 import matplotlib as mpl
 import numpy as np
 import pandas as pd
@@ -36,7 +38,7 @@ class HCFT(tr.HasStrictTraits):
 
     # CSV import
     decimal = tr.Enum(',', '.')
-    delimiter = tr.Str(';')
+    delimiter = tr.Enum(';','   ',',', '.')
     file_path = tr.File
     open_file_button = tr.Button('Open file')
     columns_headers = tr.List
@@ -58,6 +60,7 @@ class HCFT(tr.HasStrictTraits):
     x_axis_multiplier = tr.Enum(1, -1)
     y_axis_multiplier = tr.Enum(-1, 1)
     add_plot = tr.Button
+    save_plot = tr.Button
     apply_filters = tr.Bool
     plot_settings_btn = tr.Button
     plot_settings = PlotSettings()
@@ -526,6 +529,12 @@ class HCFT(tr.HasStrictTraits):
         else:
             self.add_plot_fired()
 
+    def _save_plot_fired(self):
+        # Run method on different thread so GUI doesn't freeze
+        # thread = Thread(target = threaded_function, function_args = (10,))
+        thread = Thread(target=self.save_plot_fired)
+        thread.start()
+
     def add_plot_fired(self):
         try:
             if self.apply_filters:
@@ -587,6 +596,79 @@ class HCFT(tr.HasStrictTraits):
 
             self.data_changed = True
             self.print_custom('Finished adding plot.')
+
+        except:
+            self.log_exception()
+
+    def save_plot_fired(self):
+        try:
+            if self.apply_filters:
+                if not self.filtered_and_creep_npy_files_exist(self.get_filtered_npy_file_path(self.x_axis)):
+                    return
+                # TODO link this _filtered to the path creation function
+                x_axis_name = self.x_axis + '_filtered'
+                y_axis_name = self.y_axis + '_filtered'
+                self.print_custom('Loading npy files...')
+                # when mmap_mode!=None, the array will be loaded as 'numpy.memmap'
+                # object which doesn't load the array to memory until it's
+                # indexed
+                x_axis_array = np.load(self.get_filtered_npy_file_path(self.x_axis), mmap_mode='r')
+                y_axis_array = np.load(self.get_filtered_npy_file_path(self.y_axis), mmap_mode='r')
+            else:
+                if not self.npy_files_exist(self.get_npy_file_path(self.x_axis)):
+                    return
+
+                x_axis_name = self.x_axis
+                y_axis_name = self.y_axis
+                self.print_custom('Loading npy files...')
+                # when mmap_mode!=None, the array will be loaded as 'numpy.memmap'
+                # object which doesn't load the array to memory until it's
+                # indexed
+                x_axis_array = np.load(self.get_npy_file_path(self.x_axis), mmap_mode='r')
+                y_axis_array = np.load(self.get_npy_file_path(self.y_axis), mmap_mode='r')
+
+            if self.plot_settings_active:
+                print(self.plot_settings.num_of_first_rows_to_take)
+                print(self.plot_settings.num_of_rows_to_skip_after_each_section)
+                print(self.plot_settings.num_of_rows_in_each_section)
+                print(np.size(x_axis_array))
+                indices = self.get_indices_array(np.size(x_axis_array),
+                                                 self.plot_settings.num_of_first_rows_to_take,
+                                                 self.plot_settings.num_of_rows_to_skip_after_each_section,
+                                                 self.plot_settings.num_of_rows_in_each_section)
+                x_axis_array = self.x_axis_multiplier * x_axis_array[indices]
+                y_axis_array = self.y_axis_multiplier * y_axis_array[indices]
+            else:
+                x_axis_array = self.x_axis_multiplier * x_axis_array
+                y_axis_array = self.y_axis_multiplier * y_axis_array
+            # pdb.set_trace()
+            self.print_custom('Saving Plot...')
+            # mpl.rcParams['agg.path.chunksize'] = 10000
+            #
+            # ax = self.ax
+            #
+            # ax.set_xlabel(x_axis_name)
+            # ax.set_ylabel(y_axis_name)
+            # ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color=np.random.rand(3),
+            #         label=self.file_name + ', ' + x_axis_name)
+            # ax.legend()
+
+            df =  pd.DataFrame(np.transpose(np.array([np.squeeze(x_axis_array), np.squeeze(y_axis_array)])),
+                               columns = [str(x_axis_name), str(y_axis_name)])
+
+            root = Tk()  # this is to close the dialogue box later
+            try:
+                # with block automatically closes file
+                with filedialog.asksaveasfile(mode='w', defaultextension=".csv") as file:
+                    df.to_csv(file.name)
+            except AttributeError:
+                # if user cancels save, filedialog returns None rather than a file object, and the 'with' will raise an error
+                print("The user cancelled save")
+
+            root.destroy()  # close the dialogue box
+
+            self.data_changed = True
+            self.print_custom('Finished saving plot.')
 
         except:
             self.log_exception()
