@@ -1,4 +1,5 @@
 import traitsui.api as ui
+import traitsui.editors
 from hcft.utils.mpl_figure_editor_qt import MPLFigureEditor
 
 from hcft.view.hcft_view_handler import ViewHandler, menu_exit, menu_utilities_csv_joiner, menu_about_tool
@@ -47,6 +48,7 @@ plotting_view_group = ui.VGroup(
                                           ui.Item('plot_settings_active',
                                                   show_label=False)
                                           ),
+                                ui.Item('plot_data_range', enabled_when='plot_data_range_active == True'),
                                 show_border=True,
                                 label='Plotting X axis with Y axis'
                             ),
@@ -61,6 +63,7 @@ plotting_view_group = ui.VGroup(
                                 label='Plotting Creep-fatigue of X axis variable'
                             ),
                             ui.UItem('clear_plot', resizable=True),
+                            ui.UItem('export_plot', label='Export plot as CSV', resizable=True),
                             show_border=True,
                             label='Plotting'))
 
