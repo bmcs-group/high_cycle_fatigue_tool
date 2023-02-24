@@ -70,6 +70,12 @@ class HCFT(tr.HasStrictTraits):
     add_creep_plot = tr.Button(desc='Creep plot of X axis array')
     clear_plot = tr.Button
     export_plot = tr.Button
+    plotted_curves = tr.List
+
+    max_plot_data_range = tr.Int(1)
+    plot_data_range = tr.Range(low=0, high='max_plot_data_range', mode='slider')
+    plot_data_range_active = tr.Bool
+    plot_when_plot_data_range_changes =  tr.Bool(True)
 
     plot_x_array = tr.Array
     plot_y_array = tr.Array
@@ -166,7 +172,6 @@ class HCFT(tr.HasStrictTraits):
     def parse_csv_to_npy_fired(self):
         try:
             self.print_custom('Parsing csv into npy files...')
-            self.export_data_json()
 
             """ Exporting npy arrays of original columns """
             for i in range(len(self.columns_headers) - len(self.columns_to_be_averaged)):
@@ -185,6 +190,12 @@ class HCFT(tr.HasStrictTraits):
 
                 np.save(self.get_npy_file_path(column_name), column_array)
 
+                if i == 0:
+                    self.max_plot_data_range = len(column_array)
+                    self.plot_when_plot_data_range_changes = False
+                    self.plot_data_range = self.max_plot_data_range
+                    self.plot_data_range_active = True
+
             """ Exporting npy arrays of averaged columns """
             for columns_names in self.columns_to_be_averaged:
                 temp_array = np.zeros((1))
@@ -194,6 +205,7 @@ class HCFT(tr.HasStrictTraits):
 
                 np.save(self.get_average_npy_file_path(columns_names), avg)
 
+            self.export_data_json()
             self.print_custom('Finished parsing csv into npy files.')
         except:
             self.log_exception()
@@ -237,12 +249,17 @@ class HCFT(tr.HasStrictTraits):
                        'cutting_method': self.cutting_method,
                        'force_max': self.force_max,
                        'force_min': self.force_min,
-                       'min_cycle_force_range': self.min_cycle_force_range}
+                       'min_cycle_force_range': self.min_cycle_force_range,
+                       'max_plot_data_range': self.max_plot_data_range,
+                       'plot_data_range' : self.plot_data_range,
+                       'plot_data_range_active' : self.plot_data_range_active
+                       }
         with open(self.get_json_file_path(), 'w') as outfile:
             json.dump(output_data, outfile, sort_keys=True, indent=4)
         self.print_custom('.json data file exported successfully.')
 
     def import_data_json(self):
+        self.plot_when_plot_data_range_changes = False
         json_path = self.get_json_file_path()
         if not os.path.isfile(json_path):
             return
@@ -467,6 +484,14 @@ class HCFT(tr.HasStrictTraits):
                 message='Polynomial order must be smaller than window length.')
             dialog.open()
 
+    def _plot_data_range_changed(self):
+        if self.plot_when_plot_data_range_changes:
+            if len(self.plotted_curves) != 0:
+                self.plotted_curves.pop().remove()
+            self._add_plot_fired(use_thread=False)
+        else:
+            self.plot_when_plot_data_range_changes = True
+
     # =========================================================================
     # Plotting
     # =========================================================================
@@ -492,11 +517,14 @@ class HCFT(tr.HasStrictTraits):
             self.print_custom('Please generate filtered and creep npy files first!')
             return False
 
-    def _add_plot_fired(self):
+    def _add_plot_fired(self, use_thread=True):
         # Run method on different thread so GUI doesn't freeze
         # thread = Thread(target = threaded_function, function_args = (10,))
-        thread = Thread(target=self.add_plot_fired)
-        thread.start()
+        if use_thread:
+            thread = Thread(target=self.add_plot_fired)
+            thread.start()
+        else:
+            self.add_plot_fired()
 
     def add_plot_fired(self):
         try:
@@ -540,17 +568,21 @@ class HCFT(tr.HasStrictTraits):
                 x_axis_array = self.x_axis_multiplier * x_axis_array
                 y_axis_array = self.y_axis_multiplier * y_axis_array
 
+            if not self.apply_filters and not self.plot_settings_active:
+                x_axis_array = x_axis_array[:self.plot_data_range, :]
+                y_axis_array = y_axis_array[:self.plot_data_range, :]
+
             self.print_custom('Adding Plot...')
             mpl.rcParams['agg.path.chunksize'] = 10000
-
             ax = self.ax
 
             ax.set_xlabel(x_axis_name)
             ax.set_ylabel(y_axis_name)
             self.plot_x_array = x_axis_array
             self.plot_y_array = y_axis_array
-            ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color=np.random.rand(3),
-                    label=self.file_name + ', ' + x_axis_name)
+
+            self.plotted_curves.append(ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color= np.random.rand(3),
+                    label=self.file_name + ', ' + x_axis_name)[0])
             ax.legend()
 
             self.data_changed = True
