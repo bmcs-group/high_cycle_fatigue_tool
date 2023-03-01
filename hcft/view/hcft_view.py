@@ -49,6 +49,7 @@ plotting_view_group = ui.VGroup(
                                                   show_label=False)
                                           ),
                                 ui.Item('plot_data_range', enabled_when='plot_data_range_active == True'),
+                                ui.UItem('clear_last_plot'),
                                 show_border=True,
                                 label='Plotting X axis with Y axis'
                             ),

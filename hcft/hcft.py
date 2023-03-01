@@ -58,6 +58,7 @@ class HCFT(tr.HasStrictTraits):
     x_axis_multiplier = tr.Enum(1, -1)
     y_axis_multiplier = tr.Enum(-1, 1)
     add_plot = tr.Button
+    clear_last_plot = tr.Button
     apply_filters = tr.Bool
     plot_settings_btn = tr.Button
     plot_settings = PlotSettings()
@@ -70,7 +71,6 @@ class HCFT(tr.HasStrictTraits):
     add_creep_plot = tr.Button(desc='Creep plot of X axis array')
     clear_plot = tr.Button
     export_plot = tr.Button
-    plotted_curves = tr.List
 
     max_plot_data_range = tr.Int(1)
     plot_data_range = tr.Range(low=0, high='max_plot_data_range', mode='slider')
@@ -486,8 +486,7 @@ class HCFT(tr.HasStrictTraits):
 
     def _plot_data_range_changed(self):
         if self.plot_when_plot_data_range_changes:
-            if len(self.plotted_curves) != 0:
-                self.plotted_curves.pop().remove()
+            self._clear_last_plotted_curve()
             self._add_plot_fired(use_thread=False)
         else:
             self.plot_when_plot_data_range_changes = True
@@ -516,6 +515,15 @@ class HCFT(tr.HasStrictTraits):
         else:
             self.print_custom('Please generate filtered and creep npy files first!')
             return False
+
+    def _clear_last_plotted_curve(self):
+        if len(self.ax.lines) != 0:
+            self.ax.lines[-1].remove()
+            self.ax.legend()
+            self.data_changed = True
+
+    def _clear_last_plot_fired(self):
+        self._clear_last_plotted_curve()
 
     def _add_plot_fired(self, use_thread=True):
         # Run method on different thread so GUI doesn't freeze
@@ -581,8 +589,8 @@ class HCFT(tr.HasStrictTraits):
             self.plot_x_array = x_axis_array
             self.plot_y_array = y_axis_array
 
-            self.plotted_curves.append(ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color= np.random.rand(3),
-                    label=self.file_name + ', ' + x_axis_name)[0])
+            ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color= np.random.rand(3),
+                    label=self.file_name + ', ' + x_axis_name)
             ax.legend()
 
             self.data_changed = True
