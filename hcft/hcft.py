@@ -519,7 +519,11 @@ class HCFT(tr.HasStrictTraits):
     def _clear_last_plotted_curve(self):
         if len(self.ax.lines) != 0:
             self.ax.lines[-1].remove()
+            # Refresh the legend
             self.ax.legend()
+            # Reset the axes limits
+            self.ax.relim()
+            # Update figure
             self.data_changed = True
 
     def _clear_last_plot_fired(self):
