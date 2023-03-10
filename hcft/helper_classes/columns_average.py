@@ -7,6 +7,7 @@ average_columns_editor = ui.TableEditor(
     configurable=False,
     auto_size=False,
     columns=[CheckboxColumn(name='selected', label='Select', width=0.12),
+                ui.NumericColumn(name='multi_factor', label='Multi. factor', editable=True, width=0.24),
              ui.ObjectColumn(name='column_name', editable=False, width=0.24,
                              horizontal_alignment='left')])
 
@@ -14,6 +15,7 @@ average_columns_editor = ui.TableEditor(
 class Column(tr.HasStrictTraits):
     column_name = tr.Str
     selected = tr.Bool(False)
+    multi_factor = tr.Float(1)
 
 
 class ColumnsAverage(tr.HasStrictTraits):
@@ -27,7 +29,7 @@ class ColumnsAverage(tr.HasStrictTraits):
                 ),
         buttons=[ui.OKButton, ui.CancelButton],
         title='Select data columns to be averaged',
-        width=0.15,
+        width=0.25,
         height=0.3,
         resizable=True
     )

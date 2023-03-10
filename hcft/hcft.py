@@ -72,7 +72,7 @@ class HCFT(tr.HasStrictTraits):
     clear_plot = tr.Button
     export_plot = tr.Button
 
-    max_plot_data_range = tr.Int(1)
+    max_plot_data_range = tr.Int(0)
     plot_data_range = tr.Range(low=0, high='max_plot_data_range', mode='slider')
     plot_data_range_active = tr.Bool
     plot_when_plot_data_range_changes =  tr.Bool(True)
@@ -120,11 +120,11 @@ class HCFT(tr.HasStrictTraits):
             result = dialog.open()
 
             # Test if the user opened a file to avoid throwing an exception if he doesn't
+
             if result == OK:
                 self.file_path = dialog.path
             else:
                 return
-
             # Populate headers list which fills the x-axis and y-axis with values automatically
             self.columns_headers = get_headers(self.file_path, decimal=self.decimal, delimiter=self.delimiter)
 
@@ -151,9 +151,9 @@ class HCFT(tr.HasStrictTraits):
             columns_average.configure_traits(kind='modal')
 
             columns_to_be_averaged_temp = []
-            for i in columns_average.columns:
-                if i.selected:
-                    columns_to_be_averaged_temp.append(i.column_name)
+            for col in columns_average.columns:
+                if col.selected:
+                    columns_to_be_averaged_temp.append(col)
 
             if columns_to_be_averaged_temp:  # If it's not empty
                 self.columns_to_be_averaged.append(columns_to_be_averaged_temp)
@@ -197,13 +197,15 @@ class HCFT(tr.HasStrictTraits):
                     self.plot_data_range_active = True
 
             """ Exporting npy arrays of averaged columns """
-            for columns_names in self.columns_to_be_averaged:
+            for cols in self.columns_to_be_averaged:
                 temp_array = np.zeros((1))
-                for column_name in columns_names:
-                    temp_array = temp_array + np.load(self.get_npy_file_path(column_name)).flatten()
-                avg = temp_array / len(columns_names)
+                for col in cols:
+                    col_name = col.column_name
+                    col_multi_factor = col.multi_factor
+                    temp_array = temp_array + col_multi_factor * np.load(self.get_npy_file_path(col_name)).flatten()
+                avg = temp_array / len(cols)
 
-                np.save(self.get_average_npy_file_path(columns_names), avg)
+                np.save(self.get_average_npy_file_path(cols), avg)
 
             self.export_data_json()
             self.print_custom('Finished parsing csv into npy files.')
@@ -226,9 +228,35 @@ class HCFT(tr.HasStrictTraits):
         avg_file_suffix = self.get_suffix_for_columns_to_be_averaged(columns_names)
         return os.path.join(self.npy_folder_path, self.file_name + '_' + avg_file_suffix + '.npy')
 
-    def get_suffix_for_columns_to_be_averaged(self, columns_names):
-        suffix_for_saved_file_name = 'avg_' + '_'.join(columns_names)
+    def get_suffix_for_columns_to_be_averaged(self, columns):
+        names_list = []
+        for col in columns:
+            names_list.append(col.column_name)
+        suffix_for_saved_file_name = 'avg_' + '_'.join(names_list)
         return suffix_for_saved_file_name
+
+    def _get_columns_to_be_averaged_json(self):
+        list_of_cols_list_json = []
+        for column_list in self.columns_to_be_averaged:
+            cols_list_json = []
+            for col in column_list:
+                col_json = {'column_name': col.column_name,
+                               'selected': col.selected,
+                               'multi_factor': col.multi_factor}
+                cols_list_json.append(col_json)
+            list_of_cols_list_json.append(cols_list_json)
+        return list_of_cols_list_json
+
+    def _assign_columns_to_be_averaged_from_json(self, list_of_cols_list_json):
+        self.columns_to_be_averaged = []
+        for cols_list_json in list_of_cols_list_json:
+            cols_list = []
+            for col_json in cols_list_json:
+                col = Column(column_name=col_json['column_name'],
+                                selected=col_json['selected'],
+                                multi_factor=col_json['multi_factor'])
+                cols_list.append(col)
+            self.columns_to_be_averaged.append(cols_list)
 
     def export_data_json(self):
         # Output data MUST have exactly similar keys and variable names
@@ -237,7 +265,7 @@ class HCFT(tr.HasStrictTraits):
                        'records_per_second': self.records_per_second,
                        'skip_first_rows': self.skip_first_rows,
                        'columns_headers': self.columns_headers,
-                       'columns_to_be_averaged': self.columns_to_be_averaged,
+                       'columns_to_be_averaged_json': self._get_columns_to_be_averaged_json(),
                        'x_axis': self.x_axis,
                        'y_axis': self.y_axis,
                        'x_axis_multiplier': self.x_axis_multiplier,
@@ -269,6 +297,17 @@ class HCFT(tr.HasStrictTraits):
         with open(json_path) as infile:
             data_in = json.load(infile)
         for key_data, value_data in data_in.items():
+            # Backward compatibility for columns_to_be_averaged
+            if key_data == 'columns_to_be_averaged':
+                self.columns_to_be_averaged = []
+                for cols_names_list in value_data:
+                    cols_avg = []
+                    for col_name in cols_names_list:
+                        cols_avg.append(Column(column_name=col_name))
+                    self.columns_to_be_averaged.append(cols_avg)
+                continue
+            if key_data == 'columns_to_be_averaged_json':
+                self._assign_columns_to_be_averaged_from_json(value_data)
             for key_class in class_vars:
                 if key_data == key_class:
                     # Equivalent to: self.key_class = value_data
@@ -581,8 +620,13 @@ class HCFT(tr.HasStrictTraits):
                 y_axis_array = self.y_axis_multiplier * y_axis_array
 
             if not self.apply_filters and not self.plot_settings_active:
-                x_axis_array = x_axis_array[:self.plot_data_range, :]
-                y_axis_array = y_axis_array[:self.plot_data_range, :]
+                if self.plot_data_range_active:
+                    if x_axis_array.ndim == 1:
+                        x_axis_array = x_axis_array[:self.plot_data_range]
+                        y_axis_array = y_axis_array[:self.plot_data_range]
+                    else:
+                        x_axis_array = x_axis_array[:self.plot_data_range, :]
+                        y_axis_array = y_axis_array[:self.plot_data_range, :]
 
             self.print_custom('Adding Plot...')
             mpl.rcParams['agg.path.chunksize'] = 10000
@@ -722,6 +766,7 @@ class HCFT(tr.HasStrictTraits):
     # Other functions
     # =========================================================================
     def reset(self):
+        self.plot_data_range_active = False
         self.columns_to_be_averaged = []
         self.log = ''
 
