@@ -44,10 +44,10 @@ Install Miniconda <a href="https://docs.conda.io/en/latest/miniconda.html">(down
 
 <br>
 
-<li><b>Option 2 (Direct install of the tool from the exe installer file)</b>
+<li><b>Option 2 - Direct install from an installer exe file</b>
 <br>
-You can download and install the tool on Windows using:
-
+(<i>Note: Although this packed version includes all the important functions of the tool, this is not the most up-to-date version and might show more bugs!)</i>
+<br>
 Windows 64bit: <a href="https://github.com/ishomam/high-cycle-fatigue-tool/releases/download/v1.0/hcft_v1.0_64bit.exe">hcft_v1.0_64bit.exe
 </a>
 
