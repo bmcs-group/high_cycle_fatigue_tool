@@ -2,13 +2,9 @@ name: bmcs_env
 channels:
 - conda-forge
 dependencies:
-- appmode
-- rise
-- jupyter_contrib_nbextensions
 - traits
 - matplotlib
 - numpy
-- ipywidgets
 - traitsui
 - pyqt
 - pyface

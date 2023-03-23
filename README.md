@@ -7,27 +7,27 @@ A tool with GUI (Graphical User Interface) for processing CSV files obtained fro
 3. Extracting and plotting the fatigue creep curve (cycles number vs displacement).
 4. Smoothing function for fatigue creep curves.
 5. Ability to process file with +20 Gb size.
-6. Built-in tool for joining CSV (or TXT) files.
+6. Additional built-in tool for viewing or joining huge CSV (or TXT) files (CSVJoiner).
 7. Graphical User Interface with all functions and parameters
 
 ## Usage:
 <ul>
-<li><b>Option 1 (Installing Python environment with all needed libraries)</b><br>
+<br><b>Option 1 (Installing Python environment with all needed libraries)</b><br>
 <ul>
 <li>
 Install Miniconda <a href="https://docs.conda.io/en/latest/miniconda.html">(download link)</a>.</li>
 
-<li>Perform the following commands from Anaconda Command Prompt to install the required libraries:
+<li>Run each of the following commands in Anaconda Command Prompt to install the required libraries:
 
-`conda install -c anaconda matplotlib`
+`conda install -c conda-forge matplotlib`
 
-`conda install -c anaconda scipy`
+`conda install -c conda-forge scipy`
 
-`conda install -c anaconda pandas`
+`conda install -c conda-forge pandas`
 
-`conda install -c anaconda traits`
+`conda install -c conda-forge traits`
 
-`conda install -c anaconda traitsui`
+`conda install -c conda-forge traitsui`
 
 </li>
 
@@ -36,15 +36,17 @@ Install Miniconda <a href="https://docs.conda.io/en/latest/miniconda.html">(down
 
 <li>Run the tool using the command
 
-`python PATH_TO_THE_TOOL_REPOSITORY/hcft.py`
+`python PATH_TO_THE_TOOL_REPOSITORY_FOLDER_ON_YOUR_PC/main.py`
 
 
 </li>
 </ul>
 
+<br>
+
 <li><b>Option 2 (Direct install of the tool from the exe installer file)</b>
 <br>
-You can download and install the tool on Windows using on of these installers:
+You can download and install the tool on Windows using:
 
 Windows 64bit: <a href="https://github.com/ishomam/high-cycle-fatigue-tool/releases/download/v1.0/hcft_v1.0_64bit.exe">hcft_v1.0_64bit.exe
 </a>
