@@ -632,14 +632,15 @@ class HCFT(tr.HasStrictTraits):
             mpl.rcParams['agg.path.chunksize'] = 10000
             ax = self.ax
 
-            ax.set_xlabel(x_axis_name)
-            ax.set_ylabel(y_axis_name)
+            ax.set_xlabel(x_axis_name[:60])
+            ax.set_ylabel(y_axis_name[:60])
             self.plot_x_array = x_axis_array
             self.plot_y_array = y_axis_array
 
-            ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color= np.random.rand(3),
-                    label=self.file_name + ', ' + x_axis_name)
-            ax.legend()
+            curve_label = self.file_name + ', ' + x_axis_name
+            ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color=np.random.rand(3),
+                    label=curve_label)
+            ax.legend(prop={'size': 14 if len(curve_label) < 50 else 10.5})
 
             self.data_changed = True
             self.print_custom('Finished adding plot.')
