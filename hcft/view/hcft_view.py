@@ -28,7 +28,7 @@ processing_csv_view_group = ui.VGroup(
                                                 enabled_when='take_time_from_time_column == False'),
                                         label='Time processing',
                                         show_border=True),
-                                    ui.UItem('add_columns_average'),
+                                    ui.Item('add_columns_average', label='Add cols avg / multiplier'),
                                     ui.Item('skip_first_rows'),
                                     ui.UItem('parse_csv_to_npy', resizable=True),
                                     label='Processing csv file',
