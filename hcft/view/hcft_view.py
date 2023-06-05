@@ -102,7 +102,8 @@ filters_view_group = ui.VGroup(
                             ui.VGroup(
                                 ui.Item('log',
                                         width=0.1, style='custom'),
-                                ui.UItem('clear_log'))),
+                                ui.UItem('clear_log'),
+                                ui.UItem('clear_cache'))),
                         show_border=True,
                         label='Filters'
                     )

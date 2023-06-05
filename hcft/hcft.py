@@ -51,6 +51,7 @@ class HCFT(tr.HasStrictTraits):
     add_columns_average = tr.Button
     columns_to_be_averaged = tr.List
     parse_csv_to_npy = tr.Button
+    cache_folder_name = tr.Str('NPY')
 
     # Plotting
     x_axis = tr.Enum(values='columns_headers')
@@ -93,6 +94,7 @@ class HCFT(tr.HasStrictTraits):
 
     log = tr.Str('')
     clear_log = tr.Button
+    clear_cache = tr.Button
 
     # =========================================================================
     # Assigning default values
@@ -130,7 +132,7 @@ class HCFT(tr.HasStrictTraits):
 
             # Saving file name and path and creating NPY folder
             dir_path = os.path.dirname(self.file_path)
-            self.npy_folder_path = os.path.join(dir_path, 'NPY')
+            self.npy_folder_path = os.path.join(dir_path, self.cache_folder_name)
             if not os.path.exists(self.npy_folder_path):
                 os.makedirs(self.npy_folder_path)
 
@@ -762,6 +764,23 @@ class HCFT(tr.HasStrictTraits):
 
     def _clear_log_fired(self):
         self.log = ''
+
+    def _clear_cache_fired(self):
+        deleted_files = []
+        if os.path.exists(self.npy_folder_path):
+            files = os.listdir(self.npy_folder_path)
+            for file in files:
+                if file.startswith(self.file_name):
+                    file_path = os.path.join(self.npy_folder_path, file)
+                    os.remove(file_path)
+                    deleted_files.append(file)
+            self.print_custom('---------------------')
+            self.print_custom('Cache cleared successfully.')
+            self.print_custom('Following files are deleted:')
+            for deleted_file in deleted_files:
+                self.print_custom('-  ' + deleted_file)
+        else:
+            self.print_custom(f"Directory '{self.npy_folder_path}' does not exist.")
 
     # =========================================================================
     # Other functions
