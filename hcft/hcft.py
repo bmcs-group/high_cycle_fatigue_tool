@@ -9,6 +9,7 @@ the first row.
 """
 import json
 import os
+import tempfile
 import traceback
 from threading import Thread
 
@@ -37,7 +38,7 @@ class HCFT(tr.HasStrictTraits):
     # CSV import
     decimal = tr.Enum(',', '.')
     delimiter = tr.Str(';')
-    file_path = tr.File
+    file_path = tr.File()
     open_file_button = tr.Button('Open file')
     columns_headers = tr.List
     npy_folder_path = tr.Str
@@ -52,6 +53,7 @@ class HCFT(tr.HasStrictTraits):
     columns_to_be_averaged = tr.List
     parse_csv_to_npy = tr.Button
     cache_folder_name = tr.Str('NPY')
+    cached_path_file_name = tr.Str('HCFT_last_file_path.txt')
 
     # Plotting
     x_axis = tr.Enum(values='columns_headers')
@@ -118,13 +120,20 @@ class HCFT(tr.HasStrictTraits):
         try:
             self.reset()
 
-            dialog = FileDialog(title='Select text file', action='open', default_path=self.file_path)
+            if self.file_path == '':
+                cached_path = self._get_cached_file_path_from_system_tmp()
+                default_path = os.path.expanduser("~") if cached_path == '' else cached_path
+            else:
+                default_path = self.file_path
+
+            dialog = FileDialog(title='Select text file', action='open', default_path=default_path)
             result = dialog.open()
 
             # Test if the user opened a file to avoid throwing an exception if he doesn't
 
             if result == OK:
                 self.file_path = dialog.path
+                self._cache_file_path_in_system_tmp(self.file_path)
             else:
                 return
             # Populate headers list which fills the x-axis and y-axis with values automatically
@@ -142,6 +151,23 @@ class HCFT(tr.HasStrictTraits):
 
         except:
             self.log_exception()
+
+    def _cache_file_path_in_system_tmp(self, path):
+        try:
+            cache_file_path = os.path.join(tempfile.gettempdir(), self.cached_path_file_name)
+            with open(cache_file_path, "w") as f:
+                f.write(path)
+        except:
+            self.print_custom('Caching file path failed. This has no effect on the results.')
+
+    def _get_cached_file_path_from_system_tmp(self):
+        cache_file_path = os.path.join(tempfile.gettempdir(), self.cached_path_file_name)
+        if os.path.exists(cache_file_path):
+            with open(cache_file_path, "r") as f:
+                cached_path = f.read().strip()
+                if os.path.exists(cached_path):
+                    return cached_path
+        return ''
 
     def _add_columns_average_fired(self):
         try:
@@ -636,8 +662,6 @@ class HCFT(tr.HasStrictTraits):
 
             ax.set_xlabel(x_axis_name[:60])
             ax.set_ylabel(y_axis_name[:60])
-            self.plot_x_array = x_axis_array
-            self.plot_y_array = y_axis_array
 
             curve_label = self.file_name + ', ' + x_axis_name
             ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color=np.random.rand(3),
@@ -690,7 +714,7 @@ class HCFT(tr.HasStrictTraits):
                 ))
 
             if self.normalize_cycles:
-                x_array = ax.plot(np.linspace(0, 1., disp_max.size), disp_max,
+                ax.plot(np.linspace(0, 1., disp_max.size), disp_max,
                         'k', linewidth=1.2, color=np.random.rand(3), label='Max'
                                                                            + ', ' + self.file_name + ', ' + self.x_axis)
                 ax.plot(np.linspace(0, 1., disp_min.size), disp_min,
@@ -737,12 +761,37 @@ class HCFT(tr.HasStrictTraits):
         self.data_changed = True
 
     def _export_plot_fired(self):
-        if len(self.plot_x_array) != 0 and len(self.plot_y_array) != 0:
-            # Export CSV
-            self.plot_x_array
-            self.plot_y_array
-        else:
-            self.print_custom('Please plot the required curve first.')
+        if len(self.ax.lines) == 0:
+            self.print_custom('The plot has no curves to export!')
+            return
+
+        x_label = self.ax.get_xlabel()
+        y_label = self.ax.get_ylabel()
+        df = pd.DataFrame()
+
+        max_data_length = 0
+        for i, line in enumerate(self.ax.lines):
+            max_data_length = max(len(line.get_xdata()), max_data_length)
+
+        for i, line in enumerate(self.ax.lines):
+            x_vals = line.get_xdata().astype(np.float_)
+            y_vals = line.get_ydata().astype(np.float_)
+
+            line_data_len_diff = max_data_length - len(x_vals)
+            if line_data_len_diff != 0:
+                x_vals = np.pad(x_vals, (0, line_data_len_diff), constant_values=np.nan)
+                y_vals = np.pad(y_vals, (0, line_data_len_diff), constant_values=np.nan)
+
+            curve_label = line.get_label()
+            x_header = str(i * 2) + '_' + curve_label + '_' + x_label
+            y_header = str(i * 2 + 1) + '_' + curve_label + '_' + y_label
+            df[x_header] = x_vals
+            df[y_header] = y_vals
+
+        dialog = FileDialog(title='Save plot as CSV file', action='save as', default_path=self.file_path)
+        if dialog.open() == OK:
+            file_path = dialog.path
+            df.to_csv(file_path, decimal=self.decimal, sep=self.delimiter, index=False)
 
 
     # =========================================================================
@@ -767,6 +816,11 @@ class HCFT(tr.HasStrictTraits):
 
     def _clear_cache_fired(self):
         deleted_files = []
+        cached_file_path = os.path.join(tempfile.gettempdir(), self.cached_path_file_name)
+        if os.path.exists(cached_file_path):
+            os.remove(cached_file_path)
+            deleted_files.append(cached_file_path)
+
         if os.path.exists(self.npy_folder_path):
             files = os.listdir(self.npy_folder_path)
             for file in files:
