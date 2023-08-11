@@ -17,8 +17,9 @@ import matplotlib as mpl
 import numpy as np
 import pandas as pd
 import traits.api as tr
-from pyface.api import FileDialog, MessageDialog, OK
+from pyface.api import FileDialog, MessageDialog, OK, YES
 from scipy.signal import savgol_filter
+from pyface.confirmation_dialog import confirm
 
 from hcft.helper_classes.columns_average import Column, ColumnsAverage
 from hcft.helper_classes.csv_tools import get_headers
@@ -815,26 +816,40 @@ class HCFT(tr.HasStrictTraits):
         self.log = ''
 
     def _clear_cache_fired(self):
-        deleted_files = []
-        cached_file_path = os.path.join(tempfile.gettempdir(), self.cached_path_file_name)
-        if os.path.exists(cached_file_path):
-            os.remove(cached_file_path)
-            deleted_files.append(cached_file_path)
+        confirmed = confirm(
+            parent=None,
+            message="Saved settings and the processed *.npy files will be deleted. Are you sure?",
+            title="Confirm Deletion",
+        )
 
-        if os.path.exists(self.npy_folder_path):
-            files = os.listdir(self.npy_folder_path)
-            for file in files:
-                if file.startswith(self.file_name):
-                    file_path = os.path.join(self.npy_folder_path, file)
-                    os.remove(file_path)
-                    deleted_files.append(file)
-            self.print_custom('---------------------')
-            self.print_custom('Cache cleared successfully.')
-            self.print_custom('Following files are deleted:')
-            for deleted_file in deleted_files:
-                self.print_custom('-  ' + deleted_file)
-        else:
-            self.print_custom(f"Directory '{self.npy_folder_path}' does not exist.")
+        if confirmed == YES:
+        # dialog = MessageDialog(
+        #     title="Confirm Deletion",
+        #     message="Saved settings and the processed *.npy files will be deleted. Are you sure?",
+        #     buttons=["Yes", "No"],
+        # )
+        # result = dialog.open()
+        # if result == 'Yes':
+            deleted_files = []
+            cached_file_path = os.path.join(tempfile.gettempdir(), self.cached_path_file_name)
+            if os.path.exists(cached_file_path):
+                os.remove(cached_file_path)
+                deleted_files.append(cached_file_path)
+
+            if os.path.exists(self.npy_folder_path):
+                files = os.listdir(self.npy_folder_path)
+                for file in files:
+                    if file.startswith(self.file_name):
+                        file_path = os.path.join(self.npy_folder_path, file)
+                        os.remove(file_path)
+                        deleted_files.append(file)
+                self.print_custom('---------------------')
+                self.print_custom('Cache cleared successfully.')
+                self.print_custom('Following files are deleted:')
+                for deleted_file in deleted_files:
+                    self.print_custom('-  ' + deleted_file)
+            else:
+                self.print_custom(f"Directory '{self.npy_folder_path}' does not exist.")
 
     # =========================================================================
     # Other functions
