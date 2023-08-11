@@ -20,6 +20,7 @@ import traits.api as tr
 from pyface.api import FileDialog, MessageDialog, OK, YES
 from scipy.signal import savgol_filter
 from pyface.confirmation_dialog import confirm
+import bmcs_utils.api as bu
 
 from hcft.helper_classes.columns_average import Column, ColumnsAverage
 from hcft.helper_classes.csv_tools import get_headers
@@ -665,7 +666,7 @@ class HCFT(tr.HasStrictTraits):
             ax.set_ylabel(y_axis_name[:60])
 
             curve_label = self.file_name + ', ' + x_axis_name
-            ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color=np.random.rand(3),
+            ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color=bu.get_color(),
                     label=curve_label)
             ax.legend(prop={'size': 14 if len(curve_label) < 50 else 10.5})
 
@@ -716,19 +717,19 @@ class HCFT(tr.HasStrictTraits):
 
             if self.normalize_cycles:
                 ax.plot(np.linspace(0, 1., disp_max.size), disp_max,
-                        'k', linewidth=1.2, color=np.random.rand(3), label='Max'
+                        'k', linewidth=1.2, color=bu.get_color(), label='Max'
                                                                            + ', ' + self.file_name + ', ' + self.x_axis)
                 ax.plot(np.linspace(0, 1., disp_min.size), disp_min,
-                        'k', linewidth=1.2, color=np.random.rand(3), label='Min'
+                        'k', linewidth=1.2, color=bu.get_color(), label='Min'
                                                                            + ', ' + self.file_name + ', ' + self.x_axis)
             else:
                 ax.plot(np.linspace(0, complete_cycles_number,
                                     disp_max.size), disp_max,
-                        'k', linewidth=1.2, color=np.random.rand(3), label='Max'
+                        'k', linewidth=1.2, color=bu.get_color(), label='Max'
                                                                            + ', ' + self.file_name + ', ' + self.x_axis)
                 ax.plot(np.linspace(0, complete_cycles_number,
                                     disp_min.size), disp_min,
-                        'k', linewidth=1.2, color=np.random.rand(3), label='Min'
+                        'k', linewidth=1.2, color=bu.get_color(), label='Min'
                                                                            + ', ' + self.file_name + ', ' + self.x_axis)
 
             ax.legend()
