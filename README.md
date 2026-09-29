@@ -10,53 +10,65 @@ A tool with GUI (Graphical User Interface) for processing CSV files obtained fro
 6. Additional built-in tool for viewing or joining huge CSV (or TXT) files (CSVJoiner).
 7. Graphical User Interface with all functions and parameters
 
-## Usage:
-<ul>
-<br><b>Option 1 (Installing Python environment with all needed libraries)</b><br>
-<ul>
-<li>
-Install Miniconda <a href="https://docs.conda.io/en/latest/miniconda.html">(download link)</a>.</li>
+## Installation & usage
 
-<li>Run each of the following commands in Anaconda Command Prompt to install the required libraries:
+### Option 1 (recommended): run from source with [uv](https://docs.astral.sh/uv/)
 
-`conda install -c conda-forge matplotlib`
+uv is a fast Python package and project manager. It installs the right Python version and all the dependencies for you, so you don't need Python installed beforehand.
 
-`conda install -c conda-forge scipy`
+1. **Install uv** (one time only):
 
-`conda install -c conda-forge pandas`
+   - Windows (PowerShell):
+     ```powershell
+     powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+     ```
+   - macOS / Linux:
+     ```bash
+     curl -LsSf https://astral.sh/uv/install.sh | sh
+     ```
 
-`conda install -c conda-forge traits`
+   Afterwards, open a new terminal so that the `uv` command is available.
 
-`conda install -c conda-forge traitsui`
+2. **Get the code**:
+   ```bash
+   git clone https://github.com/bmcs-group/high_cycle_fatigue_tool.git
+   cd high_cycle_fatigue_tool
+   ```
+   (Or download the repository as a ZIP file, extract it and open a terminal in that folder.)
 
-</li>
+3. **Run the tool**:
+   ```bash
+   uv run hcft
+   ```
+   On the first run, uv downloads Python and creates a local `.venv` folder with all the required libraries. Later runs start immediately.
 
-<li>Clone this repository or download its contents
-</li>
+To update to the latest version, run `git pull` and then `uv run hcft` again. uv updates the environment automatically.
 
-<li>Run the tool using the command
+<details>
+<summary>Other ways to use the tool</summary>
 
-`python PATH_TO_THE_TOOL_REPOSITORY_FOLDER_ON_YOUR_PC/main.py`
+- **With conda**, if you prefer it:
+  ```bash
+  conda env create -f environment.yml
+  conda activate hcft_env
+  python main.py
+  ```
+- **With plain pip**: `pip install .` in the repository folder, then run `hcft`.
 
+</details>
 
-</li>
-</ul>
+### Option 2: Windows installer (old version)
 
-<br>
+- Windows 64-bit: [hcft_v1.0_64bit.exe](https://github.com/bmcs-group/high_cycle_fatigue_tool/releases/download/v1.0/hcft_v1.0_64bit.exe)
+- Windows 32-bit: [hcft_v1.0_32bit.exe](https://github.com/bmcs-group/high_cycle_fatigue_tool/releases/download/v1.0/hcft_v1.0_32bit.exe)
 
-<li><b>Option 2 - Direct install from an installer exe file</b>
-<br>
-(<i>Note: Although this packed version includes all the important functions of the tool, this is not the most up-to-date version and might show more bugs!)</i>
-<br>
-Windows 64bit: <a href="https://github.com/ishomam/high-cycle-fatigue-tool/releases/download/v1.0/hcft_v1.0_64bit.exe">hcft_v1.0_64bit.exe
-</a>
+## For developers
 
-Windows 32bit: <a href="https://github.com/ishomam/high-cycle-fatigue-tool/releases/download/v1.0/hcft_v1.0_32bit.exe">hcft_v1.0_32bit.exe
-</a>
-</li>
-</ul>
-
-
+- `uv sync` creates or updates the `.venv` environment from `uv.lock`.
+- `uv add <package>` adds a new dependency to `pyproject.toml` and `uv.lock`.
+- `uv build` builds the source distribution and the wheel into `dist/`, and `uv publish` uploads them to PyPI.
+- To release a new version, update `hcft/version.py`, then tag the commit (`git tag v<version>` and `git push --tags`).
+- To build the Windows exe and installer, install [Inno Setup 6](https://jrsoftware.org/isinfo.php) and run `packaging\windows\build.bat`. The results are written to `dist\`. See [packaging/windows/README.md](packaging/windows/README.md) for details.
 ## Cite with: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3603816.svg)](https://doi.org/10.5281/zenodo.3603816)
 The repository can refered to using a unique doi hosted at https://zenodo.org
 

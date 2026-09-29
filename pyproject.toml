@@ -1,0 +1,57 @@
+[project]
+name = "hcft"
+dynamic = ["version"]
+description = "High Cycle Fatigue Tool: a GUI for processing CSV files from fatigue experiments."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "GPL-3.0" }
+authors = [{ name = "H. Spartali & BMCS-Group", email = "hspartali@imb.rwth-aachen.de" }]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "matplotlib",
+    "traits",
+    "traitsui",
+    "pyface",
+    "pyqt5",
+]
+
+[project.urls]
+Homepage = "https://github.com/bmcs-group/high_cycle_fatigue_tool"
+DOI = "https://doi.org/10.5281/zenodo.3603816"
+
+[project.gui-scripts]
+hcft = "hcft.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "hcft/version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["hcft"]
+
+[tool.uv]
+# pyqt5-qt5 doesn't publish wheels for every platform in every release;
+# make sure the lock file resolves to versions installable on all common platforms.
+required-environments = [
+    "sys_platform == 'win32' and platform_machine == 'AMD64'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'darwin'",
+]
+
+[dependency-groups]
+build = [
+    "pyinstaller>=6.22.3",
+]

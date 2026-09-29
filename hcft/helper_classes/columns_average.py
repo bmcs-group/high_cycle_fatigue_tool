@@ -2,6 +2,8 @@ import traits.api as tr
 import traitsui.api as ui
 from traitsui.extras.checkbox_column import CheckboxColumn
 
+from hcft.app_icon import app_icon
+
 average_columns_editor = ui.TableEditor(
     sortable=False,
     configurable=False,
@@ -29,6 +31,7 @@ class ColumnsAverage(tr.HasStrictTraits):
                 ),
         buttons=[ui.OKButton, ui.CancelButton],
         title='Select data columns to be averaged',
+        icon=app_icon,
         width=0.25,
         height=0.3,
         resizable=True

@@ -6,13 +6,16 @@ Created on 15 Apr 2020
 import traits.api as tr
 import traitsui.api as ui
 import pyface.api as pf
-import numpy as np
-import pandas as pd
 import os
 from itertools import takewhile, repeat
 
 from pyface.message_dialog import MessageDialog
 from traitsui.editors.api import ProgressEditor
+
+from hcft.app_icon import app_icon
+
+# Single-byte encoding that can decode any file without errors (lines are only shown, files are joined as bytes)
+DISPLAY_ENCODING = 'latin-1'
 
 
 class CSVFile(tr.HasStrictTraits):
@@ -42,14 +45,14 @@ class CSVFile(tr.HasStrictTraits):
     def _count_lines_in_file(self, file_name):
         ''' This method will count the number of lines in a huge file pretty
         quickly using custom buffering'''
-        f = open(file_name, 'rb')
-        bufgen = takewhile(lambda x: x, (f.raw.read(1024 * 1024) for i in repeat(None)))
-        return sum(buf.count(b'\n') for buf in bufgen) + 1
+        with open(file_name, 'rb') as f:
+            bufgen = takewhile(lambda x: x, (f.raw.read(1024 * 1024) for i in repeat(None)))
+            return sum(buf.count(b'\n') for buf in bufgen) + 1
 
     @tr.cached_property
     def _get_first_lines(self):
         first_lines_list = []
-        with open(self.path) as myfile:
+        with open(self.path, encoding=DISPLAY_ENCODING) as myfile:
             for i in range(self.num_of_first_lines_to_show):
                 try:
                     # Get next line if it exists!
@@ -85,7 +88,7 @@ class CSVFile(tr.HasStrictTraits):
         last_lines_list = self.get_last_n_lines(self.path, self.num_of_last_lines_to_show, False)
         last_lines_list = self.add_reverse_line_numbers(last_lines_list)
         last_lines_list = last_lines_list[0:len(last_lines_list) - self.last_lines_to_skip]
-        last_lines_str = ''.join(last_lines_list)
+        last_lines_str = '\n'.join(last_lines_list)
         return last_lines_str
 
     def get_last_n_lines(self, file_name, N, skip_empty_lines=False):
@@ -109,8 +112,9 @@ class CSVFile(tr.HasStrictTraits):
                 new_byte = read_obj.read(1)
                 # If the read byte is new line character then it means one line is read
                 if new_byte == b'\n':
-                    # Save the line in list of lines
-                    line = buffer.decode()[::-1]
+                    # Save the line in list of lines (the bytes are reversed before decoding, reversing the decoded
+                    # string instead fails for multi-byte characters)
+                    line = self.decode_reversed_bytes(buffer)
                     if (skip_empty_lines):
                         line_is_empty = line.isspace()
                         if (line_is_empty == False):
@@ -128,9 +132,12 @@ class CSVFile(tr.HasStrictTraits):
 
             # As file is read completely, if there is still data in buffer, then its first line.
             if len(buffer) > 0:
-                list_of_lines.append(buffer.decode()[::-1])
+                list_of_lines.append(self.decode_reversed_bytes(buffer))
         # return the reversed list
         return list(reversed(list_of_lines))
+
+    def decode_reversed_bytes(self, buffer):
+        return bytes(buffer[::-1]).decode(DISPLAY_ENCODING).rstrip('\r')
 
     traits_view = ui.View(
         ui.Item('path', style='readonly', label='File'),
@@ -154,23 +161,21 @@ class CSVJoiner(tr.HasStrictTraits):
     num_of_last_lines_to_show = tr.Range(low=0, high=10 ** 9, value=10, mode='spinner')
     selected = tr.Instance(CSVFile)
     join_csv_files = tr.Button
-    accumulate_time = tr.Bool
     files_end_with_empty_line = tr.Bool(True)
-    columns_headers = tr.List
-    time_column = tr.Enum(values='columns_headers')
     progress = tr.Int
 
     def _join_csv_files_fired(self):
         output_file_path = self.get_output_file_path()
-        with open(output_file_path, 'w') as outfile:
-            for csv_file, i in zip(self.csv_files, range(len(self.csv_files))):
+        # Binary mode copies the lines as they are, without decoding and encoding them
+        with open(output_file_path, 'wb') as outfile:
+            for i, csv_file in enumerate(self.csv_files):
                 current_line = 1
                 num_of_first_lines_to_skip = csv_file.first_lines_to_skip
                 num_of_last_lines_to_skip = csv_file.last_lines_to_skip
                 last_line_to_write = csv_file.get_lines_number() - num_of_last_lines_to_skip
                 progress_of_a_file = 1.0 / len(self.csv_files)
                 initial_progress = i/len(self.csv_files)
-                with open(csv_file.path) as opened_csv_file:
+                with open(csv_file.path, 'rb') as opened_csv_file:
                     for line in opened_csv_file:
                         if current_line > num_of_first_lines_to_skip and current_line <= last_line_to_write:
                             outfile.write(line)
@@ -178,7 +183,7 @@ class CSVJoiner(tr.HasStrictTraits):
                                     current_line / last_line_to_write)) * 100)
                         current_line += 1
                 if not self.files_end_with_empty_line:
-                    outfile.write('\n')
+                    outfile.write(b'\n')
         self.progress = 100
         dialog = MessageDialog(title='Finished!', message='Files joined successfully, see "' + output_file_path + '"')
         dialog.open()
@@ -188,22 +193,6 @@ class CSVJoiner(tr.HasStrictTraits):
         file_path_without_ext = os.path.splitext(file_path)[0]
         file_ext = os.path.splitext(file_path)[1]
         return file_path_without_ext + '_joined' + file_ext
-
-    def _accumulate_time_changed(self):
-        pass
-
-    #         if self.csv_files == []:
-    #             return
-    #         np.array(pd.read_csv(
-    #                     self.file_csv, delimiter=self.delimiter, decimal=self.decimal,
-    #                     nrows=1, header=None
-    #                 )
-    #             )[0]
-    #         if self.accumulate_time:
-    #             class TimeColumnChooser(tr.HasTraits):
-    #                 time_column = tr.Enum(values = 'columns_headers')
-    #             chooser = TimeColumnChooser()
-    #             chooser.configure_traits(kind='modal')
 
     def _num_of_first_lines_to_show_changed(self):
         for file in self.csv_files:
@@ -248,7 +237,6 @@ class CSVJoiner(tr.HasStrictTraits):
             ui.HGroup(ui.Item('num_of_first_lines_to_show'), ui.spring),
             ui.HGroup(ui.Item('num_of_last_lines_to_show'), ui.spring),
             ui.HGroup(ui.Item('files_end_with_empty_line'),
-                      # ui.Item('accumulate_time', enabled_when='False'),
                       ui.spring),
             ui.VGroup(
                 ui.Item('csv_files',
@@ -268,6 +256,7 @@ class CSVJoiner(tr.HasStrictTraits):
             show_border=True
         ),
         title='CSV files joiner',
+        icon=app_icon,
         resizable=True,
         width=0.6,
         height=0.7

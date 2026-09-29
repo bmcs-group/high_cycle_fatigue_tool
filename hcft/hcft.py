@@ -20,11 +20,11 @@ import traits.api as tr
 from pyface.api import FileDialog, MessageDialog, OK, YES
 from scipy.signal import savgol_filter
 from pyface.confirmation_dialog import confirm
-import bmcs_utils.api as bu
 
 from hcft.helper_classes.columns_average import Column, ColumnsAverage
 from hcft.helper_classes.csv_tools import get_headers
 from hcft.helper_classes.plot_filtering_settings import PlotSettings
+from hcft.utils.plot_style import get_color
 from hcft.view.hcft_view import hcft_window
 
 
@@ -56,6 +56,8 @@ class HCFT(tr.HasStrictTraits):
     parse_csv_to_npy = tr.Button
     cache_folder_name = tr.Str('NPY')
     cached_path_file_name = tr.Str('HCFT_last_file_path.txt')
+    # Number of csv rows parsed at once (limits the memory usage for huge files)
+    csv_chunk_size = tr.Int(10 ** 6)
 
     # Plotting
     x_axis = tr.Enum(values='columns_headers')
@@ -71,7 +73,6 @@ class HCFT(tr.HasStrictTraits):
     normalize_cycles = tr.Bool
     smooth = tr.Bool
     plot_every_nth_point = tr.Range(low=1, high=1000000, mode='spinner')
-    old_peak_force_before_cycles = tr.Float
     peak_force_before_cycles = tr.Float
     add_creep_plot = tr.Button(desc='Creep plot of X axis array')
     clear_plot = tr.Button
@@ -107,8 +108,7 @@ class HCFT(tr.HasStrictTraits):
     figure = tr.Instance(mpl.figure.Figure)
 
     def _figure_default(self):
-        figure = mpl.figure.Figure(facecolor='white')
-        figure.set_tight_layout(True)
+        figure = mpl.figure.Figure(facecolor='white', layout='tight')
         self.create_axes(figure)
         return figure
 
@@ -204,43 +204,63 @@ class HCFT(tr.HasStrictTraits):
             self.print_custom('Parsing csv into npy files...')
 
             """ Exporting npy arrays of original columns """
-            for i in range(len(self.columns_headers) - len(self.columns_to_be_averaged)):
-                column_name = self.columns_headers[i]
-                # One could provide the path directly to pd.read_csv but in this way we insure that this works also if the
-                # path to the file include chars like ü,ä
+            # The csv file is read only once in chunks and the values of each column are appended to a temporary
+            # binary file. In this way, only one chunk is kept in memory, which enables parsing huge files.
+            num_of_original_columns = len(self.columns_headers) - len(self.columns_to_be_averaged)
+            original_columns = self.columns_headers[:num_of_original_columns]
+            tmp_paths = [self.get_npy_file_path(column_name) + '.tmp' for column_name in original_columns]
+            tmp_files = [open(tmp_path, 'wb') for tmp_path in tmp_paths]
+            try:
+                # One could provide the path directly to pd.read_csv but in this way we insure that this works also if
+                # the path to the file include chars like ü,ä
                 # (with) makes sure the file stream is closed after using it
-                with open(self.file_path, encoding='unicode_escape') as file_stream:
-                    column_array = np.array(pd.read_csv(file_stream, delimiter=self.delimiter, decimal=self.decimal,
-                                                        skiprows=self.skip_first_rows, usecols=[i]))
+                with open(self.file_path, encoding='latin-1') as file_stream:
+                    # header=None, because the headers row is already counted in skip_first_rows
+                    reader = pd.read_csv(file_stream, delimiter=self.delimiter, decimal=self.decimal,
+                                         skiprows=self.skip_first_rows, header=None,
+                                         usecols=range(num_of_original_columns), chunksize=self.csv_chunk_size)
+                    non_numeric_columns = set()
+                    for chunk in reader:
+                        for i, tmp_file in enumerate(tmp_files):
+                            column = chunk[i]
+                            if not pd.api.types.is_numeric_dtype(column):
+                                column = self.to_numeric(column)
+                                non_numeric_columns.add(original_columns[i])
+                            column.to_numpy(dtype=np.float64).tofile(tmp_file)
+                    for column_name in non_numeric_columns:
+                        self.print_custom('Warning: non-numeric values in column "', column_name,
+                                          '" are replaced by nan.')
+            finally:
+                for tmp_file in tmp_files:
+                    tmp_file.close()
 
-                # TODO detect column name before loading completely to skip loading if the following condition applies
+            for column_name, tmp_path in zip(original_columns, tmp_paths):
+                column_array = np.fromfile(tmp_path, dtype=np.float64)
+                os.remove(tmp_path)
                 if column_name == self.time_column and self.take_time_from_time_column is False:
-                    column_array = np.arange(start=0.0, stop=len(column_array) / self.records_per_second,
-                                             step=1.0 / self.records_per_second)
-
+                    column_array = np.arange(column_array.size) / self.records_per_second
                 np.save(self.get_npy_file_path(column_name), column_array)
 
-                if i == 0:
-                    self.max_plot_data_range = len(column_array)
-                    self.plot_when_plot_data_range_changes = False
-                    self.plot_data_range = self.max_plot_data_range
-                    self.plot_data_range_active = True
+            self.max_plot_data_range = column_array.size
+            self.plot_when_plot_data_range_changes = False
+            self.plot_data_range = self.max_plot_data_range
+            self.plot_data_range_active = True
 
             """ Exporting npy arrays of averaged columns """
             for cols in self.columns_to_be_averaged:
-                temp_array = np.zeros((1))
-                for col in cols:
-                    col_name = col.column_name
-                    col_multi_factor = col.multi_factor
-                    temp_array = temp_array + col_multi_factor * np.load(self.get_npy_file_path(col_name)).flatten()
-                avg = temp_array / len(cols)
-
+                avg = sum(col.multi_factor * np.load(self.get_npy_file_path(col.column_name)).flatten()
+                          for col in cols) / len(cols)
                 np.save(self.get_average_npy_file_path(cols), avg)
 
             self.export_data_json()
             self.print_custom('Finished parsing csv into npy files.')
         except:
             self.log_exception()
+
+    def to_numeric(self, column):
+        # A column with some non-numeric rows (e.g., repeated headers in joined files) is not converted by
+        # pd.read_csv, therefore it's converted here and the non-numeric values are replaced by nan
+        return pd.to_numeric(column.astype(str).str.replace(self.decimal, '.', regex=False), errors='coerce')
 
     def get_npy_file_path(self, column_name):
         return os.path.join(self.npy_folder_path, self.file_name + '_' + column_name + '.npy')
@@ -323,7 +343,7 @@ class HCFT(tr.HasStrictTraits):
             return
         # class_vars is a list with class variables names
         # vars(self) & self.__dict__.items() didn't include some Trait variables like force_column = tr.Enum(values=..
-        class_vars = [attr for attr in dir(self) if not attr.startswith("_") and not attr.startswith("__")]
+        class_vars = [attr for attr in dir(self) if not attr.startswith("_")]
         with open(json_path) as infile:
             data_in = json.load(infile)
         for key_data, value_data in data_in.items():
@@ -335,14 +355,11 @@ class HCFT(tr.HasStrictTraits):
                     for col_name in cols_names_list:
                         cols_avg.append(Column(column_name=col_name))
                     self.columns_to_be_averaged.append(cols_avg)
-                continue
-            if key_data == 'columns_to_be_averaged_json':
+            elif key_data == 'columns_to_be_averaged_json':
                 self._assign_columns_to_be_averaged_from_json(value_data)
-            for key_class in class_vars:
-                if key_data == key_class:
-                    # Equivalent to: self.key_class = value_data
-                    setattr(self, key_class, value_data)
-                    break
+            elif key_data in class_vars:
+                # Equivalent to: self.key_data = value_data
+                setattr(self, key_data, value_data)
         self.print_custom('.json data file imported successfully.')
 
     def get_json_file_path(self):
@@ -445,93 +462,48 @@ class HCFT(tr.HasStrictTraits):
 
         return force_max_indices, force_min_indices
 
+    def get_plateaus_last_indices(self, a):
+        # Consecutive repeated values (plateaus) are treated as one point represented by its last index
+        if a.size == 0:
+            return np.array([], dtype=np.intp)
+        return np.append(np.flatnonzero(a[1:] != a[:-1]), a.size - 1)
+
     def get_max_indices(self, a):
-        # TODO try to vectorize this
+        # Vectorized detection of local maxima, a plateau is a max if both of its neighbors are smaller.
         # This method doesn't qualify first and last elements as max
-        max_indices = []
-        i = 1
-        while i < a.size - 1:
-            previous_element = a[i - 1]
-
-            # Skip repeated elements and record previous element value
-            first_repeated_element = True
-            while a[i] == a[i + 1] and i < a.size - 1:
-                if first_repeated_element:
-                    previous_element = a[i - 1]
-                    first_repeated_element = False
-                if i < a.size - 2:
-                    i += 1
-                else:
-                    break
-
-            # Append value if it's a local max
-            if a[i] > a[i + 1] and a[i] > previous_element:
-                max_indices.append(i)
-            i += 1
-        return np.array(max_indices)
+        indices = self.get_plateaus_last_indices(a)
+        values = a[indices]
+        is_max = (values[1:-1] > values[:-2]) & (values[1:-1] > values[2:])
+        return indices[1:-1][is_max]
 
     def get_min_indices(self, a):
-        # TODO try to vectorize this
+        # Vectorized detection of local minima, a plateau is a min if both of its neighbors are bigger.
         # This method doesn't qualify first and last elements as min
-        min_indices = []
-        i = 1
-        while i < a.size - 1:
-            previous_element = a[i - 1]
-
-            # Skip repeated elements and record previous element value
-            first_repeated_element = True
-            while a[i] == a[i + 1]:
-                if first_repeated_element:
-                    previous_element = a[i - 1]
-                    first_repeated_element = False
-                if i < a.size - 2:
-                    i += 1
-                else:
-                    break
-
-            # Append value if it's a local min
-            if a[i] < a[i + 1] and a[i] < previous_element:
-                min_indices.append(i)
-            i += 1
-        return np.array(min_indices)
+        indices = self.get_plateaus_last_indices(a)
+        values = a[indices]
+        is_min = (values[1:-1] < values[:-2]) & (values[1:-1] < values[2:])
+        return indices[1:-1][is_min]
 
     def cut_indices_of_min_max_range(self, array, max_indices, min_indices,
                                      range_upper_value, range_lower_value):
-        # TODO try to vectorize this
-        cut_max_indices = []
-        cut_min_indices = []
-
-        for max_index in max_indices:
-            if abs(array[max_index]) > abs(range_upper_value):
-                cut_max_indices.append(max_index)
-        for min_index in min_indices:
-            if abs(array[min_index]) < abs(range_lower_value):
-                cut_min_indices.append(min_index)
+        cut_max_indices = max_indices[np.abs(array[max_indices]) > abs(range_upper_value)]
+        cut_min_indices = min_indices[np.abs(array[min_indices]) < abs(range_lower_value)]
         return cut_max_indices, cut_min_indices
 
     def cut_indices_of_defined_range(self, array, max_indices, min_indices, range_):
-        # TODO try to vectorize this
-        cut_max_indices = []
-        cut_min_indices = []
-
-        for max_index, min_index in zip(max_indices, min_indices):
-            if abs(array[max_index] - array[min_index]) > range_:
-                cut_max_indices.append(max_index)
-                cut_min_indices.append(min_index)
+        # Each max is paired with the min of the same order, only pairs with bigger force difference than range_ are
+        # kept
+        n = min(max_indices.size, min_indices.size)
+        is_full_cycle = np.abs(array[max_indices[:n]] - array[min_indices[:n]]) > range_
+        cut_max_indices = max_indices[:n][is_full_cycle]
+        cut_min_indices = min_indices[:n][is_full_cycle]
 
         if max_indices.size > min_indices.size:
-            cut_max_indices.append(max_indices[-1])
+            cut_max_indices = np.append(cut_max_indices, max_indices[-1])
         elif min_indices.size > max_indices.size:
-            cut_min_indices.append(min_indices[-1])
+            cut_min_indices = np.append(cut_min_indices, min_indices[-1])
 
         return cut_max_indices, cut_min_indices
-
-    def _activate_changed(self):
-        if not self.activate_ascending_branch_smoothing:
-            self.old_peak_force_before_cycles = self.peak_force_before_cycles
-            self.peak_force_before_cycles = 0
-        else:
-            self.peak_force_before_cycles = self.old_peak_force_before_cycles
 
     def _window_length_changed(self, new):
         if new <= self.polynomial_order:
@@ -634,29 +606,20 @@ class HCFT(tr.HasStrictTraits):
                 x_axis_array = np.load(self.get_npy_file_path(self.x_axis), mmap_mode='r')
                 y_axis_array = np.load(self.get_npy_file_path(self.y_axis), mmap_mode='r')
 
+            # Only the rows needed for the plot are indexed from the memmap arrays and therefore read from the disk
             if self.plot_settings_active:
-                print(self.plot_settings.num_of_first_rows_to_take)
-                print(self.plot_settings.num_of_rows_to_skip_after_each_section)
-                print(self.plot_settings.num_of_rows_in_each_section)
-                print(np.size(x_axis_array))
-                indices = self.get_indices_array(np.size(x_axis_array),
+                indices = self.get_indices_array(len(x_axis_array),
                                                  self.plot_settings.num_of_first_rows_to_take,
                                                  self.plot_settings.num_of_rows_to_skip_after_each_section,
                                                  self.plot_settings.num_of_rows_in_each_section)
-                x_axis_array = self.x_axis_multiplier * x_axis_array[indices]
-                y_axis_array = self.y_axis_multiplier * y_axis_array[indices]
-            else:
-                x_axis_array = self.x_axis_multiplier * x_axis_array
-                y_axis_array = self.y_axis_multiplier * y_axis_array
+                x_axis_array = x_axis_array[indices]
+                y_axis_array = y_axis_array[indices]
+            elif not self.apply_filters and self.plot_data_range_active:
+                x_axis_array = x_axis_array[:self.plot_data_range]
+                y_axis_array = y_axis_array[:self.plot_data_range]
 
-            if not self.apply_filters and not self.plot_settings_active:
-                if self.plot_data_range_active:
-                    if x_axis_array.ndim == 1:
-                        x_axis_array = x_axis_array[:self.plot_data_range]
-                        y_axis_array = y_axis_array[:self.plot_data_range]
-                    else:
-                        x_axis_array = x_axis_array[:self.plot_data_range, :]
-                        y_axis_array = y_axis_array[:self.plot_data_range, :]
+            x_axis_array = self.x_axis_multiplier * x_axis_array
+            y_axis_array = self.y_axis_multiplier * y_axis_array
 
             self.print_custom('Adding Plot...')
             mpl.rcParams['agg.path.chunksize'] = 10000
@@ -666,7 +629,7 @@ class HCFT(tr.HasStrictTraits):
             ax.set_ylabel(y_axis_name[:60])
 
             curve_label = self.file_name + ', ' + x_axis_name
-            ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color=bu.get_color(),
+            ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color=get_color(),
                     label=curve_label)
             ax.legend(prop={'size': 14 if len(curve_label) < 50 else 10.5})
 
@@ -715,22 +678,11 @@ class HCFT(tr.HasStrictTraits):
                     savgol_filter(disp_min[1:], window_length=self.window_length, polyorder=self.polynomial_order)
                 ))
 
-            if self.normalize_cycles:
-                ax.plot(np.linspace(0, 1., disp_max.size), disp_max,
-                        'k', linewidth=1.2, color=bu.get_color(), label='Max'
-                                                                           + ', ' + self.file_name + ', ' + self.x_axis)
-                ax.plot(np.linspace(0, 1., disp_min.size), disp_min,
-                        'k', linewidth=1.2, color=bu.get_color(), label='Min'
-                                                                           + ', ' + self.file_name + ', ' + self.x_axis)
-            else:
-                ax.plot(np.linspace(0, complete_cycles_number,
-                                    disp_max.size), disp_max,
-                        'k', linewidth=1.2, color=bu.get_color(), label='Max'
-                                                                           + ', ' + self.file_name + ', ' + self.x_axis)
-                ax.plot(np.linspace(0, complete_cycles_number,
-                                    disp_min.size), disp_min,
-                        'k', linewidth=1.2, color=bu.get_color(), label='Min'
-                                                                           + ', ' + self.file_name + ', ' + self.x_axis)
+            cycles_end = 1. if self.normalize_cycles else complete_cycles_number
+            ax.plot(np.linspace(0, cycles_end, disp_max.size), disp_max, linewidth=1.2, color=get_color(),
+                    label='Max, ' + self.file_name + ', ' + self.x_axis)
+            ax.plot(np.linspace(0, cycles_end, disp_min.size), disp_min, linewidth=1.2, color=get_color(),
+                    label='Min, ' + self.file_name + ', ' + self.x_axis)
 
             ax.legend()
             self.data_changed = True
@@ -744,18 +696,15 @@ class HCFT(tr.HasStrictTraits):
                           first_rows,
                           distance,
                           num_of_rows_after_each_distance):
-        result_1 = np.arange(first_rows)
-        result_2 = np.arange(start=first_rows, stop=array_size,
-                             step=distance + num_of_rows_after_each_distance)
-        result_2_updated = np.array([], dtype=np.int_)
-
-        for result_2_value in result_2:
-            data_slice = np.arange(result_2_value, result_2_value +
-                                   num_of_rows_after_each_distance)
-            result_2_updated = np.concatenate((result_2_updated, data_slice))
-
-        result = np.concatenate((result_1, result_2_updated))
-        return result
+        # Indices of the first rows followed by sections with (num_of_rows_after_each_distance) rows, which are
+        # separated by (distance) skipped rows
+        result_1 = np.arange(min(first_rows, array_size))
+        sections_starts = np.arange(start=first_rows, stop=array_size,
+                                    step=max(distance + num_of_rows_after_each_distance, 1))
+        result_2 = (sections_starts[:, np.newaxis] + np.arange(num_of_rows_after_each_distance)).ravel()
+        # The last section might exceed the array size
+        result_2 = result_2[result_2 < array_size]
+        return np.concatenate((result_1, result_2))
 
     def _clear_plot_fired(self):
         self.figure.clear()
@@ -776,8 +725,8 @@ class HCFT(tr.HasStrictTraits):
             max_data_length = max(len(line.get_xdata()), max_data_length)
 
         for i, line in enumerate(self.ax.lines):
-            x_vals = line.get_xdata().astype(np.float_)
-            y_vals = line.get_ydata().astype(np.float_)
+            x_vals = np.asarray(line.get_xdata(), dtype=np.float64).flatten()
+            y_vals = np.asarray(line.get_ydata(), dtype=np.float64).flatten()
 
             line_data_len_diff = max_data_length - len(x_vals)
             if line_data_len_diff != 0:

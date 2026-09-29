@@ -1,4 +1,4 @@
-from api import HCFT
+from hcft.api import HCFT
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.integrate

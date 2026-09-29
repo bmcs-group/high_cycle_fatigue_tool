@@ -1,5 +1,6 @@
 import traitsui.api as ui
 import traitsui.editors
+from hcft.app_icon import app_icon
 from hcft.utils.mpl_figure_editor_qt import MPLFigureEditor
 
 from hcft.view.hcft_view_handler import ViewHandler, menu_exit, menu_utilities_csv_joiner, menu_about_tool
@@ -129,6 +130,7 @@ hcft_window = ui.View(
                     plot_figure_view
                 ),
                 title='High-Cycle Fatigue Tool',
+                icon=app_icon,
                 resizable=True,
                 width=0.9,
                 height=0.9,

@@ -5,19 +5,14 @@ Created on 15 Apr 2020
 '''
 import traits.api as tr
 import traitsui.api as ui
-import pyface.api as pf
-import numpy as np
-import pandas as pd
-import os
-from itertools import takewhile, repeat
 
-from pyface.message_dialog import MessageDialog
-from traitsui.editors.api import ProgressEditor
+from hcft.app_icon import app_icon
+from hcft.version import __version__
 
 
 class AboutTool(tr.HasStrictTraits):
     about_tool_text = tr.Str(
-        'High-Cycle Fatigue Tool \nVersion: 1.0.0\n\nHCFT is a tool with a graphical user interface \nfor processing CSV files obtained from fatigue \nexperiments up to the high-cycle fatigue ranges.\nAdditionally, tests with monotonic loading can be processed.\n\nDeveloped in:\nRWTH Aachen University - Institute of Structural Concrete\nBy:\nDr.-Ing. Rostislav Chudoba\nM.Sc. Homam Spartali\n\nGithub link:\nhttps://github.com/ishomam/high-cycle-fatigue-tool')
+        'High-Cycle Fatigue Tool \nVersion: ' + __version__ + '\n\nHCFT is a tool with a graphical user interface \nfor processing CSV files obtained from fatigue \nexperiments up to the high-cycle fatigue ranges.\nAdditionally, tests with monotonic loading can be processed.\n\nDeveloped in:\nRWTH Aachen University - Institute of Structural Concrete\nBy:\nDr.-Ing. Homam Spartali\nProf. Dr. habil. Rostislav Chudoba\n\nGithub link:\nhttps://github.com/bmcs-group/high_cycle_fatigue_tool')
 
     # =========================================================================
     # Configuration of the view
@@ -29,6 +24,7 @@ class AboutTool(tr.HasStrictTraits):
         ),
         buttons=[ui.OKButton],
         title='About HCFT',
+        icon=app_icon,
         resizable=True,
         width=0.3,
         height=0.25

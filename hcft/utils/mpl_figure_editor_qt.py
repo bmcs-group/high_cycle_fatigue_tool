@@ -11,15 +11,19 @@ http://markmail.org/message/z3hnoqruk56g2bje
 adapted and tested to work with PySide from Anaconda in March 2014
 """
 
-from matplotlib.backends.backend_qt5 import \
-    NavigationToolbar2QT
-from matplotlib.backends.backend_qt5agg import \
-    FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
+# Importing pyface.qt first selects the Qt binding, which is then also used by matplotlib's generic qtagg backend
 from pyface.qt import QtGui
+from matplotlib.backends.backend_qtagg import \
+    FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT
+from matplotlib.figure import Figure
 from traits.api import Instance
 from traitsui.basic_editor_factory import BasicEditorFactory
-from traitsui.qt4.editor import Editor
+
+try:
+    from traitsui.qt.editor import Editor
+except ImportError:
+    # traitsui < 7.0
+    from traitsui.qt4.editor import Editor
 
 
 class _MPLFigureEditor(Editor):
@@ -30,19 +34,21 @@ class _MPLFigureEditor(Editor):
 
     def init(self, parent):
         self.control = self._create_canvas(parent)
-        self.object.on_trait_change(self.update_editor, 'data_changed')
+        # dispatch='ui' ensures that the figure is redrawn in the GUI thread also when the plot is added from another
+        # thread
+        self.object.on_trait_change(self.update_editor, 'data_changed', dispatch='ui')
         self.set_tooltip()
 
     def update_editor(self):
-        figure = self.value
-        figure.canvas.mpl_connect('key_press_event', self.key_press_callback)
-        figure.canvas.draw()
+        self.value.canvas.draw()
 
     def _create_canvas(self, parent):
         """ Create the MPL canvas. """
         # matplotlib commands to create a canvas
         frame = QtGui.QWidget()
         mpl_canvas = FigureCanvas(self.value)
+        # Connected once here, connecting it on each update would toggle the log scale several times per key press
+        mpl_canvas.mpl_connect('key_press_event', self.key_press_callback)
         mpl_canvas.setParent(frame)
 
         vbox = QtGui.QVBoxLayout()
@@ -90,7 +96,7 @@ if __name__ == "__main__":
     from numpy import sin, cos, linspace, pi
     from traits.etsconfig.api import ETSConfig
 
-    ETSConfig.toolkit = 'qt4'
+    ETSConfig.toolkit = 'qt'
 
     class Test(HasTraits):
 

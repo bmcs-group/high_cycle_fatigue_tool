@@ -1,19 +1,16 @@
-name: bmcs_env
+name: hcft_env
 channels:
 - conda-forge
 dependencies:
-- appmode
-- rise
-- jupyter_contrib_nbextensions
-- ipywidgets
+- python>=3.9
 - traits
-- matplotlib
-- numpy
 - traitsui
-- pyqt
 - pyface
-- ipympl
+- pyqt
+- numpy
 - pandas
+- scipy
+- matplotlib
 - pip
 - pip:
     - -e .

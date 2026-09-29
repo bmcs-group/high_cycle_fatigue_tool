@@ -1,7 +1,0 @@
-traits
-traitsui
-pyface
-numpy
-pandas
-matplotlib
-scipy
