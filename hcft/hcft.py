@@ -23,6 +23,7 @@ from pyface.confirmation_dialog import confirm
 
 from hcft.helper_classes.columns_average import Column, ColumnsAverage
 from hcft.helper_classes.csv_tools import get_headers
+from hcft.helper_classes.cutting_method_info import CuttingMethodInfo
 from hcft.helper_classes.plot_filtering_settings import PlotSettings
 from hcft.utils.plot_style import get_color
 from hcft.view.hcft_view import hcft_window
@@ -96,6 +97,9 @@ class HCFT(tr.HasStrictTraits):
     force_min = tr.Float(40)
     min_cycle_force_range = tr.Float(50)
     cutting_method = tr.Enum('Define min cycle range(force difference)', 'Define Max, Min')
+    cutting_method_info = tr.Button('Info')
+    # Reference to the open info window, otherwise it gets garbage collected and closes
+    _cutting_method_info_ui = tr.Any
 
     log = tr.Str('')
     clear_log = tr.Button
@@ -540,6 +544,19 @@ class HCFT(tr.HasStrictTraits):
     def _plot_settings_btn_fired(self):
         try:
             self.plot_settings.configure_traits(kind='modal')
+        except:
+            self.log_exception()
+
+    def _cutting_method_info_fired(self):
+        try:
+            ui = self._cutting_method_info_ui
+            if ui is not None and ui.control is not None:
+                # Already open, bring it to the front instead of opening another one
+                ui.control.raise_()
+                ui.control.activateWindow()
+            else:
+                # Non-modal, so it can stay open while choosing the method
+                self._cutting_method_info_ui = CuttingMethodInfo().edit_traits(kind='live')
         except:
             self.log_exception()
 

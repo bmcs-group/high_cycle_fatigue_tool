@@ -85,7 +85,9 @@ filters_view_group = ui.VGroup(
                             show_border=True,
                             label='Smooth ascending branch for all displacements:'
                         ),
-                        ui.VGroup(ui.Item('cutting_method'),
+                        ui.VGroup(ui.HGroup(ui.Item('cutting_method'),
+                                            ui.UItem('cutting_method_info',
+                                                     tooltip='Show the difference between the methods')),
                                   ui.VGroup(ui.Item('force_max'),
                                             ui.Item('force_min'),
                                             label='Max, Min:',
