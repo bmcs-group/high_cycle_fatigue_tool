@@ -72,19 +72,21 @@ plotting_view_group = ui.VGroup(
 filters_view_group = ui.VGroup(
                         ui.Item('force_column'),
                         ui.VGroup(ui.VGroup(
-                            ui.Item('window_length'),
-                            ui.Item('polynomial_order'),
-                            enabled_when='activate_ascending_branch_smoothing == True or smooth == True'),
-                            show_border=True,
-                            label='Smoothing parameters (Savitzky-Golay filter):'
-                        ),
-                        ui.VGroup(ui.VGroup(
                             ui.Item('activate_ascending_branch_smoothing'),
                             ui.Item('peak_force_before_cycles',
                                     enabled_when='activate_ascending_branch_smoothing == True')),
                             show_border=True,
                             label='Smooth ascending branch for all displacements:'
                         ),
+                        # Shown only when a smoothing is active (ascending branch or creep plot smoothing)
+                        ui.VGroup(ui.VGroup(
+                            ui.Item('window_length'),
+                            ui.Item('polynomial_order')),
+                            show_border=True,
+                            label='Smoothing parameters (Savitzky-Golay filter):',
+                            visible_when='activate_ascending_branch_smoothing == True or smooth == True'
+                        ),
+                        # Only the parameters of the selected cutting method are shown
                         ui.VGroup(ui.HGroup(ui.Item('cutting_method'),
                                             ui.UItem('cutting_method_info',
                                                      tooltip='Show the difference between the methods')),
@@ -92,11 +94,11 @@ filters_view_group = ui.VGroup(
                                             ui.Item('force_min'),
                                             label='Max, Min:',
                                             show_border=True,
-                                            enabled_when='cutting_method == "Define Max, Min"'),
+                                            visible_when='cutting_method == "Define Max, Min"'),
                                   ui.VGroup(ui.Item('min_cycle_force_range'),
                                             label='Min cycle force range:',
                                             show_border=True,
-                                            enabled_when='cutting_method == \
+                                            visible_when='cutting_method == \
                                                                 "Define min cycle range(force difference)"'),
                                   show_border=True,
                                   label='Cut fake cycles for creep:'),

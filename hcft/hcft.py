@@ -24,6 +24,7 @@ from pyface.confirmation_dialog import confirm
 from hcft.helper_classes.columns_average import Column, ColumnsAverage
 from hcft.helper_classes.csv_tools import get_headers
 from hcft.helper_classes.cutting_method_info import CuttingMethodInfo
+from hcft.helper_classes.files_tools import ask_to_open_saved_file
 from hcft.helper_classes.plot_filtering_settings import PlotSettings
 from hcft.utils.plot_style import get_color
 from hcft.view.hcft_view import hcft_window
@@ -760,6 +761,8 @@ class HCFT(tr.HasStrictTraits):
         if dialog.open() == OK:
             file_path = dialog.path
             df.to_csv(file_path, decimal=self.decimal, sep=self.delimiter, index=False)
+            self.print_custom('Plot exported to "', file_path, '"')
+            ask_to_open_saved_file(file_path, title='Plot exported')
 
 
     # =========================================================================

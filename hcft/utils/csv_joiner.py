@@ -9,10 +9,10 @@ import pyface.api as pf
 import os
 from itertools import takewhile, repeat
 
-from pyface.message_dialog import MessageDialog
 from traitsui.editors.api import ProgressEditor
 
 from hcft.app_icon import app_icon
+from hcft.helper_classes.files_tools import ask_to_open_saved_file
 
 # Single-byte encoding that can decode any file without errors (lines are only shown, files are joined as bytes)
 DISPLAY_ENCODING = 'latin-1'
@@ -185,8 +185,7 @@ class CSVJoiner(tr.HasStrictTraits):
                 if not self.files_end_with_empty_line:
                     outfile.write(b'\n')
         self.progress = 100
-        dialog = MessageDialog(title='Finished!', message='Files joined successfully, see "' + output_file_path + '"')
-        dialog.open()
+        ask_to_open_saved_file(output_file_path, title='Files joined')
 
     def get_output_file_path(self):
         file_path = self.csv_files[0].path
