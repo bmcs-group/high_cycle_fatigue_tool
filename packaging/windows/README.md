@@ -28,13 +28,23 @@ Add `-SkipInstaller` to build only the exe folder.
 1. Update `hcft/version.py`. The exe, installer name and installer
    metadata all take the version from there.
 2. Run the build and test the installer.
-3. Upload the installer to a GitHub release.
+3. Commit the changes, then publish the installer as a GitHub release:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File packaging\windows\release.ps1
+   ```
+
+   It creates and pushes the tag `v<version>` (if it doesn't exist yet) and the
+   release with the installer attached. Add `-Draft` to check the release on
+   GitHub before publishing. Needs the GitHub CLI
+   (`winget install --id GitHub.cli -e`), logged in once with `gh auth login`.
 
 ## Files
 
 | File | Purpose |
 |---|---|
 | `build.ps1` / `build.bat` | Runs all steps below |
+| `release.ps1` | Publishes the built installer as a GitHub release |
 | `make_icon.py` | Renders `hcft/resources/hcft_icon.svg` to `.ico`, `.png` and the wizard images |
 | `hcft.spec` | PyInstaller configuration |
 | `hcft_launcher.py` | Entry script of the exe |
