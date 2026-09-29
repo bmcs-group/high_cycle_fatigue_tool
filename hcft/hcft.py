@@ -17,7 +17,7 @@ import matplotlib as mpl
 import numpy as np
 import pandas as pd
 import traits.api as tr
-from pyface.api import FileDialog, MessageDialog, OK, YES
+from pyface.api import FileDialog, GUI, MessageDialog, OK, YES, warning
 from scipy.signal import savgol_filter
 from pyface.confirmation_dialog import confirm
 
@@ -26,6 +26,7 @@ from hcft.helper_classes.csv_tools import get_headers
 from hcft.helper_classes.cutting_method_info import CuttingMethodInfo
 from hcft.helper_classes.files_tools import ask_to_open_saved_file
 from hcft.helper_classes.plot_filtering_settings import PlotSettings
+from hcft.helper_classes.smoothing_info import SmoothingInfo
 from hcft.utils.plot_style import get_color
 from hcft.view.hcft_view import hcft_window
 
@@ -101,10 +102,23 @@ class HCFT(tr.HasStrictTraits):
     cutting_method_info = tr.Button('Info')
     # Reference to the open info window, otherwise it gets garbage collected and closes
     _cutting_method_info_ui = tr.Any
+    smoothing_info = tr.Button('Info')
+    _smoothing_info_ui = tr.Any
 
     log = tr.Str('')
     clear_log = tr.Button
     clear_cache = tr.Button
+
+    # State of the current file, used to deactivate the options which are not available yet
+    file_loaded = tr.Bool(False)
+    npy_available = tr.Bool(False)
+    filtered_npy_available = tr.Bool(False)
+    # Description of the task running on a different thread, empty when no task is running
+    busy_message = tr.Str('')
+    busy = tr.Property(tr.Bool, depends_on='busy_message')
+
+    def _get_busy(self):
+        return self.busy_message != ''
 
     # =========================================================================
     # Assigning default values
@@ -143,6 +157,7 @@ class HCFT(tr.HasStrictTraits):
                 self._cache_file_path_in_system_tmp(self.file_path)
             else:
                 return
+            self.file_loaded = False
             # Populate headers list which fills the x-axis and y-axis with values automatically
             self.columns_headers = get_headers(self.file_path, decimal=self.decimal, delimiter=self.delimiter)
 
@@ -155,9 +170,40 @@ class HCFT(tr.HasStrictTraits):
             self.file_name = os.path.splitext(os.path.basename(self.file_path))[0]
 
             self.import_data_json()
+            self.file_loaded = True
 
         except:
             self.log_exception()
+        finally:
+            self.update_npy_availability()
+
+    @tr.observe('columns_headers.items, force_column')
+    def _update_npy_availability_on_columns_change(self, event):
+        # e.g. a newly added columns average doesn't have an npy file until the csv is parsed again
+        self.update_npy_availability()
+
+    def update_npy_availability(self):
+        self.npy_available = self.file_loaded and all(
+            os.path.exists(self.get_npy_file_path(column_name)) for column_name in self.columns_headers)
+        self.filtered_npy_available = (self.npy_available
+                                       and os.path.exists(self.get_filtered_npy_file_path(self.force_column))
+                                       and os.path.exists(self.get_max_npy_file_path(self.force_column)))
+        if not self.filtered_npy_available:
+            self.apply_filters = False
+
+    def run_in_thread(self, target, busy_message):
+        # Run method on different thread so GUI doesn't freeze, the options are deactivated while it's busy
+        if self.busy:
+            return
+        self.busy_message = busy_message
+
+        def run():
+            try:
+                target()
+            finally:
+                self.busy_message = ''
+
+        Thread(target=run).start()
 
     def _cache_file_path_in_system_tmp(self, path):
         try:
@@ -199,10 +245,7 @@ class HCFT(tr.HasStrictTraits):
             self.log_exception()
 
     def _parse_csv_to_npy_fired(self):
-        # Run method on different thread so GUI doesn't freeze
-        # thread = Thread(target = threaded_function, function_args = (10,))
-        thread = Thread(target=self.parse_csv_to_npy_fired)
-        thread.start()
+        self.run_in_thread(self.parse_csv_to_npy_fired, 'Parsing csv...')
 
     def parse_csv_to_npy_fired(self):
         try:
@@ -261,6 +304,8 @@ class HCFT(tr.HasStrictTraits):
             self.print_custom('Finished parsing csv into npy files.')
         except:
             self.log_exception()
+        finally:
+            self.update_npy_availability()
 
     def to_numeric(self, column):
         # A column with some non-numeric rows (e.g., repeated headers in joined files) is not converted by
@@ -371,10 +416,7 @@ class HCFT(tr.HasStrictTraits):
         return os.path.join(self.npy_folder_path, self.file_name + '.json')
 
     def _generate_filtered_and_creep_npy_fired(self):
-        # Run method on different thread so GUI doesn't freeze
-        # thread = Thread(target = threaded_function, function_args = (10,))
-        thread = Thread(target=self.generate_filtered_and_creep_npy_fired)
-        thread.start()
+        self.run_in_thread(self.generate_filtered_and_creep_npy_fired, 'Generating filtered and creep files...')
 
     def generate_filtered_and_creep_npy_fired(self):
         try:
@@ -385,7 +427,21 @@ class HCFT(tr.HasStrictTraits):
 
             # 1- Export filtered force
             force = np.load(self.get_npy_file_path(self.force_column)).flatten()
-            peak_force_before_cycles_index = np.where(abs((force)) > abs(self.peak_force_before_cycles))[0][0]
+            # The cycles start at the first force exceeding the peak force before cycles, the rows before are the
+            # ascending branch
+            exceeding_indices = np.flatnonzero(np.abs(force) > abs(self.peak_force_before_cycles))
+            if exceeding_indices.size == 0:
+                self.warn_user('The force never exceeds "Peak force before cycles" (', self.peak_force_before_cycles,
+                               '), please choose a smaller value!')
+                return
+            peak_force_before_cycles_index = exceeding_indices[0]
+            # The Savitzky-Golay filter needs at least window_length points
+            if self.activate_ascending_branch_smoothing and peak_force_before_cycles_index < self.window_length:
+                self.warn_user('The ascending branch has only ', peak_force_before_cycles_index,
+                               ' rows, which is less than the smoothing window length (', self.window_length,
+                               '). Please increase "Peak force before cycles" (', self.peak_force_before_cycles,
+                               '), reduce the window length or deactivate the ascending branch smoothing.')
+                return
             force_ascending = force[0:peak_force_before_cycles_index]
             force_rest = force[peak_force_before_cycles_index:]
 
@@ -410,6 +466,8 @@ class HCFT(tr.HasStrictTraits):
             self.print_custom('Filtered and creep npy files are generated.')
         except:
             self.log_exception()
+        finally:
+            self.update_npy_availability()
 
     def export_filtered_displacements(self, force_max_min_indices, peak_force_before_cycles_index):
         for i in range(len(self.columns_headers)):
@@ -532,8 +590,10 @@ class HCFT(tr.HasStrictTraits):
 
     def _plot_data_range_changed(self):
         if self.plot_when_plot_data_range_changes:
+            # The last curve is plotted again with the new range, keeping its color
+            color = self.ax.lines[-1].get_color() if len(self.ax.lines) != 0 else None
             self._clear_last_plotted_curve()
-            self._add_plot_fired(use_thread=False)
+            self.add_plot_fired(color=color)
         else:
             self.plot_when_plot_data_range_changes = True
 
@@ -550,29 +610,37 @@ class HCFT(tr.HasStrictTraits):
 
     def _cutting_method_info_fired(self):
         try:
-            ui = self._cutting_method_info_ui
-            if ui is not None and ui.control is not None:
-                # Already open, bring it to the front instead of opening another one
-                ui.control.raise_()
-                ui.control.activateWindow()
-            else:
-                # Non-modal, so it can stay open while choosing the method
-                self._cutting_method_info_ui = CuttingMethodInfo().edit_traits(kind='live')
+            self._cutting_method_info_ui = self.show_info_window(self._cutting_method_info_ui, CuttingMethodInfo)
         except:
             self.log_exception()
+
+    def _smoothing_info_fired(self):
+        try:
+            self._smoothing_info_ui = self.show_info_window(self._smoothing_info_ui, SmoothingInfo)
+        except:
+            self.log_exception()
+
+    def show_info_window(self, ui, info_class):
+        if ui is not None and ui.control is not None:
+            # Already open, bring it to the front instead of opening another one
+            ui.control.raise_()
+            ui.control.activateWindow()
+            return ui
+        # Non-modal, so it can stay open while choosing the options
+        return info_class().edit_traits(kind='live')
 
     def npy_files_exist(self, path):
         if os.path.exists(path):
             return True
         else:
-            self.print_custom('Please parse csv file to generate npy files first!')
+            self.warn_user('Please parse csv file to generate npy files first!')
             return False
 
     def filtered_and_creep_npy_files_exist(self, path):
         if os.path.exists(path):
             return True
         else:
-            self.print_custom('Please generate filtered and creep npy files first!')
+            self.warn_user('Please generate filtered and creep npy files first!')
             return False
 
     def _clear_last_plotted_curve(self):
@@ -588,16 +656,10 @@ class HCFT(tr.HasStrictTraits):
     def _clear_last_plot_fired(self):
         self._clear_last_plotted_curve()
 
-    def _add_plot_fired(self, use_thread=True):
-        # Run method on different thread so GUI doesn't freeze
-        # thread = Thread(target = threaded_function, function_args = (10,))
-        if use_thread:
-            thread = Thread(target=self.add_plot_fired)
-            thread.start()
-        else:
-            self.add_plot_fired()
+    def _add_plot_fired(self):
+        self.run_in_thread(self.add_plot_fired, 'Adding plot...')
 
-    def add_plot_fired(self):
+    def add_plot_fired(self, color=None):
         try:
             if self.apply_filters:
                 if not self.filtered_and_creep_npy_files_exist(self.get_filtered_npy_file_path(self.x_axis)):
@@ -647,7 +709,7 @@ class HCFT(tr.HasStrictTraits):
             ax.set_ylabel(y_axis_name[:60])
 
             curve_label = self.file_name + ', ' + x_axis_name
-            ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color=get_color(),
+            ax.plot(x_axis_array, y_axis_array, linewidth=1.2, color=get_color() if color is None else color,
                     label=curve_label)
             ax.legend(prop={'size': 14 if len(curve_label) < 50 else 10.5})
 
@@ -658,10 +720,7 @@ class HCFT(tr.HasStrictTraits):
             self.log_exception()
 
     def _add_creep_plot_fired(self):
-        # Run method on different thread so GUI doesn't freeze
-        # thread = Thread(target = threaded_function, function_args = (10,))
-        thread = Thread(target=self.add_creep_plot_fired)
-        thread.start()
+        self.run_in_thread(self.add_creep_plot_fired, 'Adding creep-fatigue plot...')
 
     def add_creep_plot_fired(self):
         try:
@@ -676,16 +735,17 @@ class HCFT(tr.HasStrictTraits):
             self.print_custom('Adding creep-fatigue plot...')
             mpl.rcParams['agg.path.chunksize'] = 10000
 
-            ax = self.ax
-
-            ax.set_xlabel('Cycles number')
-            ax.set_ylabel(self.x_axis)
-
             if self.plot_every_nth_point > 1:
                 disp_max = disp_max[0::self.plot_every_nth_point]
                 disp_min = disp_min[0::self.plot_every_nth_point]
 
             if self.smooth:
+                # The Savitzky-Golay filter needs at least window_length points
+                if min(disp_max.size, disp_min.size) - 1 < self.window_length:
+                    self.warn_user('Only ', min(disp_max.size, disp_min.size), ' cycles to plot, which is less '
+                                   'than the smoothing window length (', self.window_length, '). Please reduce '
+                                   'the window length or "Plot every nth point", or deactivate "Smooth".')
+                    return
                 # Keeping the first item of the array and filtering the rest
                 disp_max = np.concatenate((
                     np.array([disp_max[0]]),
@@ -695,6 +755,10 @@ class HCFT(tr.HasStrictTraits):
                     np.array([disp_min[0]]),
                     savgol_filter(disp_min[1:], window_length=self.window_length, polyorder=self.polynomial_order)
                 ))
+
+            ax = self.ax
+            ax.set_xlabel('Cycles number')
+            ax.set_ylabel(self.x_axis)
 
             cycles_end = 1. if self.normalize_cycles else complete_cycles_number
             ax.plot(np.linspace(0, cycles_end, disp_max.size), disp_max, linewidth=1.2, color=get_color(),
@@ -731,7 +795,7 @@ class HCFT(tr.HasStrictTraits):
 
     def _export_plot_fired(self):
         if len(self.ax.lines) == 0:
-            self.print_custom('The plot has no curves to export!')
+            self.warn_user('The plot has no curves to export!')
             return
 
         x_label = self.ax.get_xlabel()
@@ -757,7 +821,13 @@ class HCFT(tr.HasStrictTraits):
             df[x_header] = x_vals
             df[y_header] = y_vals
 
-        dialog = FileDialog(title='Save plot as CSV file', action='save as', default_path=self.file_path)
+        # A new file name is suggested, so the input file isn't overwritten by mistake
+        if self.file_loaded:
+            default_path = os.path.join(os.path.dirname(self.file_path), self.file_name + '_plot.csv')
+        else:
+            default_path = os.path.join(os.path.expanduser('~'), 'plot.csv')
+        dialog = FileDialog(title='Save plot as CSV file', action='save as', default_path=default_path,
+                            wildcard=FileDialog.create_wildcard('CSV files', '*.csv'))
         if dialog.open() == OK:
             file_path = dialog.path
             df.to_csv(file_path, decimal=self.decimal, sep=self.delimiter, index=False)
@@ -775,6 +845,13 @@ class HCFT(tr.HasStrictTraits):
         else:
             self.log = self.log + '\n' + \
                        ''.join(str(e) for e in list(input_args))
+
+    def warn_user(self, *input_args):
+        # For actions which can't be done, the message is logged and shown in a dialog. The dialog is opened in the
+        # GUI thread, because this can be called from the threads running the tasks
+        self.print_custom(*input_args)
+        message = ''.join(str(e) for e in input_args)
+        GUI.invoke_later(warning, None, message, 'Attention!')
 
     def log_exception(self):
         self.print_custom('SOMETHING WENT WRONG!')
@@ -820,6 +897,7 @@ class HCFT(tr.HasStrictTraits):
                     self.print_custom('-  ' + deleted_file)
             else:
                 self.print_custom(f"Directory '{self.npy_folder_path}' does not exist.")
+            self.update_npy_availability()
 
     # =========================================================================
     # Other functions

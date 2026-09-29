@@ -165,7 +165,19 @@ class CSVJoiner(tr.HasStrictTraits):
     progress = tr.Int
 
     def _join_csv_files_fired(self):
-        output_file_path = self.get_output_file_path()
+        if not self.csv_files:
+            return
+        dialog = pf.FileDialog(title='Save joined csv file',
+                               action='save as',
+                               default_path=self.get_output_file_path())
+        if dialog.open() != pf.OK:
+            return
+        output_file_path = dialog.path
+        input_paths = [os.path.normcase(os.path.abspath(csv_file.path)) for csv_file in self.csv_files]
+        if os.path.normcase(os.path.abspath(output_file_path)) in input_paths:
+            pf.error(parent=None, title='Invalid file',
+                     message='The joined file cannot overwrite one of the files being joined, please choose another name.')
+            return
         # Binary mode copies the lines as they are, without decoding and encoding them
         with open(output_file_path, 'wb') as outfile:
             for i, csv_file in enumerate(self.csv_files):
@@ -249,7 +261,7 @@ class CSVJoiner(tr.HasStrictTraits):
                         )
             ),
             ui.HGroup(
-                ui.UItem('join_csv_files', width=150),
+                ui.UItem('join_csv_files', width=150, enabled_when='len(csv_files) > 0'),
                 ui.UItem('progress', editor=ProgressEditor(min=0, max=100))
             ),
             show_border=True
