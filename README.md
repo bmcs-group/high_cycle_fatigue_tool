@@ -57,17 +57,16 @@ To update to the latest version, run `git pull` and then `uv run hcft` again. uv
 
 </details>
 
-### Option 2: Windows installer (old version)
+### Option 2: Windows installer
 
-- Windows 64-bit: [hcft_v1.0_64bit.exe](https://github.com/bmcs-group/high_cycle_fatigue_tool/releases/download/v1.0/hcft_v1.0_64bit.exe)
-- Windows 32-bit: [hcft_v1.0_32bit.exe](https://github.com/bmcs-group/high_cycle_fatigue_tool/releases/download/v1.0/hcft_v1.0_32bit.exe)
+- Windows 64-bit: [hcft-1.1.0-win64-setup.exe](https://github.com/bmcs-group/high_cycle_fatigue_tool/releases/download/v1.1.0/hcft-1.1.0-win64-setup.exe)
 
 ## For developers
 
 - `uv sync` creates or updates the `.venv` environment from `uv.lock`.
 - `uv add <package>` adds a new dependency to `pyproject.toml` and `uv.lock`.
 - `uv build` builds the source distribution and the wheel into `dist/`, and `uv publish` uploads them to PyPI.
-- To release a new version, update `hcft/version.py`, then tag the commit (`git tag v<version>` and `git push --tags`).
+- To release a new version, update `hcft/version.py`, build the installer (see below), commit, then run `packaging\windows\release.ps1` to tag the commit and publish the GitHub release with the installer.
 - To build the Windows exe and installer, install [Inno Setup 6](https://jrsoftware.org/isinfo.php) and run `packaging\windows\build.bat`. The results are written to `dist\`. See [packaging/windows/README.md](packaging/windows/README.md) for details.
 ## Cite with: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3603816.svg)](https://doi.org/10.5281/zenodo.3603816)
 The repository can refered to using a unique doi hosted at https://zenodo.org
