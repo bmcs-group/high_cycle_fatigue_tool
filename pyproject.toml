@@ -3,7 +3,7 @@ name = "hcft"
 dynamic = ["version"]
 description = "High Cycle Fatigue Tool: a GUI for processing CSV files from fatigue experiments."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { text = "GPL-3.0" }
 authors = [{ name = "H. Spartali & BMCS-Group", email = "hspartali@imb.rwth-aachen.de" }]
 classifiers = [
