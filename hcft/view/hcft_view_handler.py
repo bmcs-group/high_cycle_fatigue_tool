@@ -1,5 +1,5 @@
-import traitsui.api as ui
 import traits.api as tr
+import traitsui.api as ui
 
 from hcft.about_tool import AboutTool
 from hcft.utils.csv_joiner import CSVJoiner

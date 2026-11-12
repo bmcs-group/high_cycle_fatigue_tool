@@ -3,12 +3,12 @@ Created on 15 Apr 2020
 
 @author: Homam
 '''
+import os
+from itertools import repeat, takewhile
+
+import pyface.api as pf
 import traits.api as tr
 import traitsui.api as ui
-import pyface.api as pf
-import os
-from itertools import takewhile, repeat
-
 from traitsui.editors.api import ProgressEditor
 
 from hcft.app_icon import app_icon
@@ -53,14 +53,14 @@ class CSVFile(tr.HasStrictTraits):
     def _get_first_lines(self):
         first_lines_list = []
         with open(self.path, encoding=DISPLAY_ENCODING) as myfile:
-            for i in range(self.num_of_first_lines_to_show):
+            for _ in range(self.num_of_first_lines_to_show):
                 try:
                     # Get next line if it exists!
                     line = next(myfile)
                     # The following will not executed if an exception was thrown
                     first_lines_list.append(line)
                 except StopIteration:
-                    # If last line ends with \n then a new empty line is 
+                    # If last line ends with \n then a new empty line is
                     # actually there
                     if len(first_lines_list) != 0:
                         if first_lines_list[-1].endswith('\n'):
@@ -73,13 +73,13 @@ class CSVFile(tr.HasStrictTraits):
 
     def add_line_numbers(self, lines_list):
         new_list = []
-        for line_num, line in zip(range(1, len(lines_list) + 1), lines_list):
+        for line_num, line in zip(range(1, len(lines_list) + 1), lines_list, strict=True):
             new_list.append('(' + str(line_num) + ')--> ' + str(line))
         return new_list
 
     def add_reverse_line_numbers(self, lines_list):
         new_list = []
-        for line_num, line in zip(range(len(lines_list), 0, -1), lines_list):
+        for line_num, line in zip(range(len(lines_list), 0, -1), lines_list, strict=True):
             new_list.append('(' + str(line_num) + ')--> ' + str(line))
         return new_list
 
@@ -115,9 +115,8 @@ class CSVFile(tr.HasStrictTraits):
                     # Save the line in list of lines (the bytes are reversed before decoding, reversing the decoded
                     # string instead fails for multi-byte characters)
                     line = self.decode_reversed_bytes(buffer)
-                    if (skip_empty_lines):
-                        line_is_empty = line.isspace()
-                        if (line_is_empty == False):
+                    if skip_empty_lines:
+                        if not line.isspace():
                             list_of_lines.append(line)
                     else:
                         list_of_lines.append(line)
@@ -176,7 +175,8 @@ class CSVJoiner(tr.HasStrictTraits):
         input_paths = [os.path.normcase(os.path.abspath(csv_file.path)) for csv_file in self.csv_files]
         if os.path.normcase(os.path.abspath(output_file_path)) in input_paths:
             pf.error(parent=None, title='Invalid file',
-                     message='The joined file cannot overwrite one of the files being joined, please choose another name.')
+                     message='The joined file cannot overwrite one of the files being joined, '
+                             'please choose another name.')
             return
         # Binary mode copies the lines as they are, without decoding and encoding them
         with open(output_file_path, 'wb') as outfile:
@@ -223,7 +223,7 @@ class CSVJoiner(tr.HasStrictTraits):
         result = dialog.open()
 
         csv_files_paths = []
-        # Test if the user opened a file to avoid throwing an exception 
+        # Test if the user opened a file to avoid throwing an exception
         # if he doesn't
         if result == pf.OK:
             csv_files_paths = dialog.paths

@@ -4,8 +4,8 @@
 done in a side session of the ibvpy_apps session, which carries CYCRE-W across the repositories. RC's word the
 same evening: *"I tend to migrate it to git.nrw — and then enhance and adapt it for the purposes that we need
 here … Bringing the tool to the current coding practices would be great."* Instructions and gates come first
-(§3–§8). The record (§10) follows the build. RC's answer the same evening: *"Yes, build H1–H3"*. They are built
-(§10); H0 and H4 are open.
+(§3–§8). The record (§10) follows the build. RC's answers the same evening: *"Yes, build H1–H3"*, then *"Build
+H4 now"*. Both are built (§10); H0, the move, is open.
 
 **Origin:** gsm `calibration_strategy/08` §4 stage 3 (branch `claude/cycrew-c1`, amended 2026-11-12). There, the
 cycling legs of CYCRE-W are compared by their characteristics: the secondary slope of the fatigue-creep curve,
@@ -487,14 +487,57 @@ It read the 15 files on the share read-only and wrote nothing. 68 checks, all pa
 
   The column is a flag for the evaluation's windows (`branch_rate` marks them), not a correction.
 
+### 2026-11-12, later: H4 built (RC: *"Build H4 now"*)
+
+- **The GUI on the core.** *Generate filtered and creep npy* takes its creep cut (the `_max` / `_min` files) from
+  `hcft.cycles.turning_points`:
+  - *Define min cycle range* is the hysteresis band;
+  - *Define Max, Min* takes the band between its two levels (absolute values) and keeps the maxima beyond Max and
+    the minima within Min;
+  - a minimum before the first maximum, the foot of the loading ramp, is dropped, as `cycle_table` does;
+  - a band that is not positive is refused with a message.
+
+  The positional pairing (`cut_indices_of_*`) is gone from the GUI and lives on as the reference in
+  `tests/hcft1_reference.py`. The filtered files (all raw extrema, for the hysteresis plot) are unchanged. Tooltips
+  say what the two parameters now mean.
+- **Per-step reading in the GUI.** The GUI has no step variable. Its band is an absolute force range, so a record
+  of several blocks is read in one pass as long as the range lies below the smallest block's. §2.1's failure came
+  from a band at half the largest block's range.
+- **The CLI is `hcft-table`**, a console script (`hcft/cli.py`, extra `nc` = netCDF4), instead of §5's
+  `hcft table`: `hcft` is a gui-script, which on Windows runs without a console.
+  - It is schema-free: the variable names, the step variable and the unit factors are arguments.
+  - It writes the table as CSV and each step's channel quality to stderr.
+  - On SWP-002 it reproduces H3's per-channel numbers (block 1: E 102.0 / 35.94 / 42.37 / 37.04 GPa, loss angle
+    28.25 / 1.81 / 3.62 / 2.16°).
+  - CYCRE-W's LVDTs read shortening as positive, so their channel factor is +10³/L.
+- **The notebook `notebooks/energy_measuring.ipynb` is not changed.** The README shows the call that gives its loop
+  energy (force [kN] and displacement [mm] give `w_loop` in J). This session's task left the two notebooks alone,
+  and the global `nbstripout` filter would strip their stored outputs on any commit.
+- **README:** a section on the core and the CLI, and feature 8.
+- **Version 1.2.0.** The table records it. Inno Setup's `VersionInfoVersion` needs a numeric version, so a `.dev`
+  suffix is not possible. The release (tag, installer) stays with the maintainer. 2.0.0 is his call: moving the GUI's
+  libraries to an extra affects only `pip install hcft`.
+- **The linter covers the whole package**, with the notebooks and `packaging/` excluded. The 38 findings in the
+  GUI modules are fixed:
+  - 10 bare `except:` became `except Exception:`;
+  - imports are sorted;
+  - three `zip`s got an explicit `strict=`;
+  - unused variables went;
+  - a legacy `np.random.rand` became a generator;
+  - two long lines were split. The About text was checked to be unchanged.
+- **Tests: 33.**
+  - `tests/test_cli.py` (4) writes its NetCDF file in the test.
+  - `tests/test_gui_creep.py` (3) runs the GUI's CSV → npy → creep cut headless, through the core, for both
+    methods and for a refused range.
+  - The GUI's window builds offscreen (`edit_traits`). It was not driven by hand.
+- **G5 under load.** One re-run read 1.39 s while another session ran reproxis' tests with 12 workers (load 18).
+  Under that load, an A/B of the H3 and H4 core gave 3.95 / 4.31 s CPU (the minimum of four alternating calls):
+  no change in cost. With the machine quiet again, the quick check passes 36 of 36, with G5 at 0.57 s.
+
 **Open:**
 
 - **H0:** the move (RC, Homam).
-- **H4:**
-  - the GUI on the core;
-  - the CLI;
-  - the notebook's `w_loop`;
-  - the README's section on the core;
-  - the version.
 - **With the move (§6.5):** `.gitlab-ci.yml` and `CLAUDE.md`.
-- **Not run here:** the Windows installer build. Its scripts and its locked versions are unchanged.
+- **Not run here:** the Windows installer build. Its scripts are unchanged; its lock gains netCDF4 for the dev
+  group only.
+- **Homam's review of the GUI changes** before a release.

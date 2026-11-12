@@ -29,6 +29,10 @@ gui = [
     "pyface",
     "pyqt5",
 ]
+# hcft-table, the command line for NetCDF files
+nc = [
+    "netCDF4",
+]
 
 [project.urls]
 Homepage = "https://github.com/bmcs-group/high_cycle_fatigue_tool"
@@ -36,6 +40,9 @@ DOI = "https://doi.org/10.5281/zenodo.3603816"
 
 [project.gui-scripts]
 hcft = "hcft.__main__:main"
+
+[project.scripts]
+hcft-table = "hcft.cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -64,6 +71,7 @@ gui = [
     "hcft[gui]",
 ]
 dev = [
+    "hcft[nc]",
     "pytest",
     "ruff",
 ]
@@ -77,8 +85,8 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 120
 target-version = "py310"
-# The GUI modules predate the linter; they join when H4 rebases the GUI on the core (concept 01 §7).
-include = ["hcft/cycles.py", "hcft/__init__.py", "hcft/api.py", "hcft/version.py", "tests/**/*.py", "dev/**/*.py"]
+# The notebooks and the PyInstaller packaging (its .spec gets its names from PyInstaller) stay outside.
+extend-exclude = ["notebooks", "Notebooks", "packaging"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "NPY", "RUF"]

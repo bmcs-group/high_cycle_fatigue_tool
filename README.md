@@ -9,6 +9,35 @@ A tool with GUI (Graphical User Interface) for processing CSV files obtained fro
 5. Ability to process file with +20 Gb size.
 6. Additional built-in tool for viewing or joining huge CSV (or TXT) files (CSVJoiner).
 7. Graphical User Interface with all functions and parameters
+8. A headless core, `hcft.cycles`, that turns one cycling step into a table with one row per cycle (numpy only), and a command line, `hcft-table`, for NetCDF files.
+
+## The cycle table without the GUI
+
+`hcft.cycles` needs numpy alone (`pip install hcft` installs nothing else). It gives the GUI its cycles, and other programs can call it directly:
+
+```python
+from hcft.cycles import cycle_table, channel_quality, branch_rate
+
+# one cycling step: the time [s], the load (the peak load must be the maximum, e.g. the stress with
+# compression positive) and one or more deformation channels in the same sign convention (e.g. the strains)
+tab = cycle_table(time, stress, [eps_1, eps_2, eps_3], names=['u1', 'u2', 'u3'], extra=T, extra_names=['T'])
+
+tab.sigma_up, tab.sigma_lo   # the load at the upper and lower turning points, one value per cycle
+tab.eps_up, tab.eps_lo       # each channel there: the two branches of the fatigue creep curve
+tab.E_sec                    # the secant stiffness per channel and cycle
+tab.w_loop                   # the loop's area (dissipated energy) per channel and cycle
+tab.regular                  # the cycles of the step's dominant block
+channel_quality(tab)         # per channel: follow, still share, third harmonic, jumps, typical values
+branch_rate(tab, [3600, 18000, 36000], 1800, covariate='T')   # the branches' rates at 1, 5 and 10 h
+```
+
+The core is unit-free: with the stress in MPa and the strain in ‰, `E_sec` is in GPa and `w_loop` in kJ/m³; with the force in kN and the displacement in mm, `w_loop` is the energy per cycle in J (the loop energy of `notebooks/energy_measuring.ipynb`). The method and its checks are described in [dev/concepts/01_THE_CYCLE_TABLE_FOR_REPROXIS.md](dev/concepts/01_THE_CYCLE_TABLE_FOR_REPROXIS.md).
+
+The command line reads NetCDF files (`pip install "hcft[nc]"`) and writes the table as CSV. The variable names are arguments; the factors turn a force and displacements that are negative in compression:
+
+```bash
+hcft-table test.nc --load force --channels u_axial_1,u_axial_2 --step-var step_index --load-factor -1 --channel-factor -1 -o table.csv
+```
 
 ## Installation & usage
 

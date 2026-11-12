@@ -1,7 +1,7 @@
 import traits.api as tr
 import traitsui.api as ui
 
-from hcft.app_icon import app_icon, RESOURCES_DIR
+from hcft.app_icon import RESOURCES_DIR, app_icon
 from hcft.utils.svg_editor_qt import SVGEditor
 
 

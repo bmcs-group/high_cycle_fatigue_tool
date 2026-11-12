@@ -151,11 +151,17 @@ def turning_points(load, band: float) -> tuple[np.ndarray, np.ndarray]:
     A reversal counts once the load has come back from its running extreme by more than ``band``: a hysteresis
     band. This is hcft's force-range criterion applied to the running extreme instead of to maxima and minima
     paired by position, so a noise extremum never shifts the pairing. The turning points alternate. A peak of
-    equal samples is taken at its first sample. Python runs over the candidate extrema only, not the samples.
+    equal samples is taken at its first sample. Samples without a load (NaN) are skipped. Python runs over the
+    candidate extrema only, not the samples.
     """
     if not band > 0:
         raise ValueError(f'band must be positive, got {band!r}')
     x = np.asarray(load, dtype=float).ravel()
+    finite = np.isfinite(x)
+    if not finite.all():                      # samples without a load are skipped; the indices stay the caller's
+        keep = np.flatnonzero(finite)
+        i, k = turning_points(x[keep], band)
+        return keep[i], k
     d = np.diff(x)
     nz = np.flatnonzero(d != 0)
     if nz.size < 2:

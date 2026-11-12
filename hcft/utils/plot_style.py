@@ -12,6 +12,7 @@ plot_colors = ['#000000',
                '#7f7f7f',
                '#17becf']
 i_color = 0
+_rng = np.random.default_rng()
 
 
 def set_latex_mpl_format(font_size=15):
@@ -27,6 +28,6 @@ def set_latex_mpl_format(font_size=15):
 
 def get_color():
     global i_color
-    color = plot_colors[i_color] if i_color < len(plot_colors) else np.random.rand(3)
+    color = plot_colors[i_color] if i_color < len(plot_colors) else _rng.random(3)
     i_color += 1
     return color
