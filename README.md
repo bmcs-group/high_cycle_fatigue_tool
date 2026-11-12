@@ -53,7 +53,7 @@ To update to the latest version, run `git pull` and then `uv run hcft` again. uv
   conda activate hcft_env
   python main.py
   ```
-- **With plain pip**: `pip install .` in the repository folder, then run `hcft`.
+- **With plain pip**: `pip install ".[gui]"` in the repository folder, then run `hcft`. (`pip install .` alone installs the headless core, `hcft.cycles`, which needs numpy only.)
 
 </details>
 
@@ -63,7 +63,8 @@ To update to the latest version, run `git pull` and then `uv run hcft` again. uv
 
 ## For developers
 
-- `uv sync` creates or updates the `.venv` environment from `uv.lock`.
+- `uv sync` creates or updates the `.venv` environment from `uv.lock`, with the GUI and the dev tools (the default groups).
+- `uv run pytest` runs the tests, `uv run ruff check` the linter.
 - `uv add <package>` adds a new dependency to `pyproject.toml` and `uv.lock`.
 - `uv build` builds the source distribution and the wheel into `dist/`, and `uv publish` uploads them to PyPI.
 - To release a new version, update `hcft/version.py`, build the installer (see below), commit, then run `packaging\windows\release.ps1` to tag the commit and publish the GitHub release with the installer.

@@ -1,8 +1,12 @@
 import sys
 
-from hcft.api import HCFT
-from hcft.app_icon import ICON_FILE
-from hcft.utils.plot_style import set_latex_mpl_format
+try:
+    from hcft.api import HCFT
+    from hcft.app_icon import ICON_FILE
+    from hcft.utils.plot_style import set_latex_mpl_format
+except ImportError as err:  # the core needs numpy alone; the GUI needs the extra
+    raise SystemExit(f"hcft's GUI needs the extra 'gui' ({err.name} is missing): "
+                     "uv run hcft in the checkout, or pip install 'hcft[gui]'") from err
 
 
 def set_app_icon():

@@ -4,7 +4,8 @@
 done in a side session of the ibvpy_apps session, which carries CYCRE-W across the repositories. RC's word the
 same evening: *"I tend to migrate it to git.nrw — and then enhance and adapt it for the purposes that we need
 here … Bringing the tool to the current coding practices would be great."* Instructions and gates come first
-(§3–§8). The record (§10) follows the build.
+(§3–§8). The record (§10) follows the build. RC's answer the same evening: *"Yes, build H1–H3"*. They are built
+(§10); H0 and H4 are open.
 
 **Origin:** gsm `calibration_strategy/08` §4 stage 3 (branch `claude/cycrew-c1`, amended 2026-11-12). There, the
 cycling legs of CYCRE-W are compared by their characteristics: the secondary slope of the fatigue-creep curve,
@@ -398,4 +399,102 @@ Two findings for the other sessions, not acted on here:
 
 ## 10. Record
 
-*(after the build)*
+### 2026-11-12: H1–H3 built (local branch `claude/01-cycle-table`, nothing pushed)
+
+**H1, the core.**
+
+- `hcft/cycles.py`, numpy only:
+  - `cycle_table` returns a `CycleTable`. It is a frozen dataclass with read-only arrays and `to_dict()`, and it
+    names its column groups as class constants (`COLUMNS`, `CHANNEL_COLUMNS`, `EXTRA_COLUMNS`, `CHANNEL_ATTRS`,
+    `STEP_ATTRS`) for reproxis' NetCDF writer.
+  - The building blocks `turning_points` and `sample_times` are public.
+  - The reductions are `branch_rate` (returning a `BranchRate`), `channel_quality` and `loss_angle`.
+- `pyproject.toml`:
+  - The base is numpy, and the extra `gui` holds the seven GUI libraries.
+  - There are three dependency groups: `gui = ["hcft[gui]"]`, `dev` (pytest, ruff) and `build` (unchanged).
+  - `default-groups = ["gui", "dev"]`, plus the pytest and ruff configuration.
+  - `uv.lock` was refreshed with uv 0.13.8. Only pytest, ruff and their dependencies were added; no locked version
+    moved.
+- ruff: line length 120; rules E, F, W, I, B, UP, NPY, RUF. It applies to the core, the tests and the tools. The GUI
+  modules join with H4.
+- `hcft/__init__.py` was already empty. `hcft/api.py` gained `__all__`. `hcft/__main__.py` exits with a message
+  naming the extra when the GUI's libraries are missing.
+- The README gains the pip line (`pip install ".[gui]"`) and the developers' lines (`uv run pytest`,
+  `uv run ruff check`).
+
+**Deviations from §3, §5 and §7:**
+
+- **`uv run hcft` stays as it is.** The default dependency groups install the extra in the checkout, so the README's
+  command and the Windows build scripts are unchanged (§5 had `uv run --extra gui hcft`, which also works). A
+  package depending on hcft gets numpy alone.
+- **`w_loop` is in the product of the units handed in:** MPa·‰ = kJ/m³ for reproxis' call, not J/m³ as §3's table
+  has it. The core is unit-free. §2's figures in J/m³ are 10³ × the column.
+- **Further parameters:** `refine`, `still_rel` (0.15) and `jump_factor` (8), all recorded in `params`.
+- **Further columns:** `i_up`, `i_lo`, `i_end`, the sample indices into the arrays handed in (for the GUI in H4).
+  The step attributes gain `t_first` and `n_dropped`.
+- **`loss_angle`** is arctan(4w/(π Δσ Δε)), exact for an ellipse. The scratch's arcsin differs by less than 0.01°
+  at 2°.
+- **The regular cycles must be the majority**, or none is regular. Without this rule, a hold read with the default
+  band yields noise "cycles", 19 of 151 of them passing (found by the synthetic hold).
+- **`still_share`'s threshold is relative:** `still_rel` × a following channel's mean motion per sample, i.e.
+  0.098 µm at CYCRE-W's 0.78 Hz (§2.2: 0.1 µm absolute). SWP-002 block 1 reads 35 / 4 / 15 / 6 % against §2.2's
+  40 / 7 / 16 / 8 %. The scratch counted every sample from the first regular cycle to the step's end; the core
+  counts the regular cycles' samples only.
+- **`h3`** is phase-locked within the cycles over the whole step. The scratch used least squares over 200 s
+  windows. On SWP-002 block 1 they agree within 0.3 points: 17.7 / 1.0 / 3.3 / 1.4 % against
+  18 / 0.9 / 3.3 / 1.3 %.
+- **`jumps`:**
+  - The detector compares the medians of the 5 cycles after and before each position, so a single outlier is no
+    jump.
+  - The scale is the mean absolute cycle-to-cycle difference (σ = 0.886 mean|Δ|). The first run used the MAD,
+    which vanishes on LVDTs that rest in 0.1 µm quanta, and read 1 166 false jumps; a test now holds this case.
+  - A jump's size is the level after minus the level before.
+
+**H2, the tests:** 26 tests in `tests/test_cycles.py`, and `tests/hcft1_reference.py` (v1.1.0's functions,
+verbatim). `uv run pytest` passes and `uv run ruff check` is clean.
+
+**H3, the real-data check:** `dev/tools/check_cycrew.py` (`uv run --with netcdf4 python dev/tools/check_cycrew.py`).
+It read the 15 files on the share read-only and wrote nothing. 68 checks, all passed.
+
+| gate | result |
+|---|---|
+| G0 | open (RC, Homam) |
+| G1 | **passed.** The wheel's `Requires-Dist` is numpy alone, with the extra `gui` holding the seven. `import hcft.cycles` loads none of them (a test). In a fresh environment from the wheel, the `hcft` command exits with the message. With the default groups, `HCFT()` builds (Qt offscreen; no window was opened, and the Windows build was not run). |
+| G2 | **passed** (synthetic). The elliptic loop's area is within 10⁻⁴ of N sin(2π/N)/2π at 25.5, 102 and 179 samples (25.5: 0.989912 against 0.989912). At 25.5 samples, 1.5° reads as 1.485° and E_sec agrees to 4·10⁻⁴. A time offset of 2.5 or 50 ms reads as arctan(tan(360° f Δt) · bias) to 0.01°. Noise extrema and plateaus give no false cycle. A ramp, a hold and a head block below or above the band leave the dominant block regular and the rest marked. NaN voids 2–3 cycles of its channel only. A sticking (play) and a clipped channel show follow < 0.5, h3 > 10 % and still > 30 %. A jump of 0.007 ‰ is found to one cycle, an outlier cycle is not, and a channel resting in quanta has none. Rounded stamps are spread back exactly. With T as a covariate, `branch_rate` recovers a rate to 2 %. |
+| G3 | **passed** on all 23 FATIGUE steps. The core's turning points equal hcft 1.1.0's, apart from 9 368 plateau doubles (equal force, one sample apart) and at most two differences per step and kind, all at the head or the tail; none lies inside the regular cycles. hcft 1 keeps pairs of odd range: the loading ramp paired with a loop in **three** legs (210, 275 and 285 kN; §2.1 named two); 18–20 kN pairs in four legs; and in each SWP block 3, the previous block's 143 kN loops (19–38 pairs), which the core counts and marks as not regular. |
+| G4 | **passed.** §2.1's counts are equal in all five steps. SWP-002: the heads are +176 / +195 / +214 s; the upper strain is 0.7507 / 0.7836 / 0.8354 ‰; E of the mean strain is 45.60 / 36.49 / 34.85 GPa; E per channel matches §2.2 to 0.1 GPa; u_axial_1 is flagged as sticking in block 1. The loss angle over SWP's blocks matches §2.4 to 0.03° (u_axial_4: 1.59 / 1.41 / 1.50°, 2.16 / 1.54 / 1.52°, 2.27 / 1.93 / 1.97°), with a 0.78 Hz : 0.11 Hz ratio of 1.04–1.42 against the 7 of a time offset. On the cleanest channel, the 100-cycle mean of `w_loop` scatters by ≤ 16.1 % in all 15 specimens (≤ 6 % in 11). |
+| G5 | **passed:** 0.3–0.6 s per 11 h leg (790 000 samples, 4 LVDTs + their mean, T as an extra), first call included. |
+| G6 | open (reproxis) |
+
+**Corrections to §2 from H3:**
+
+- **§2.4's four specimens without a clean channel.** The range 4.2–6.0° / 5.7–6.8 J/m³ holds for three of them:
+  SW-H creep→cyclic r1 and SW-H cyclic-first r2 and r3 read 4.4–6.0° / 5.8–6.8 J/m³. SW-L cyclic-first r2 has no
+  following LVDT at all:
+  - u_axial_4 rests in its 0.01 mm export quanta (still share 94 %);
+  - u_axial_1 sticks (follow 0.14);
+  - u_axial_2 and u_axial_3 follow at 0.57–0.62 and read 9.4–12.3° (10.9–13.2 J/m³).
+
+  The other eleven specimens read 0.69–2.81°.
+- **§2.5's jump of u_axial_2** (SWP-002 block 3, 73 776 s) is +0.032 ‰ from one cycle to the next, then a slide to
+  +0.051 ‰ over six cycles.
+- **A slide §2.5 missed:** in the same block, u_axial_3 slides +0.028 ‰ over twelve cycles at 72 365 s.
+- **Jumps over all 23 steps:** 345 on the LVDT channels.
+  - 54 lie in the legs' first ten minutes: the fast initial transient.
+  - 278 lie on channels that rest or stick (still ≥ 20 % or follow < 0.85): stick-slip.
+  - 13 lie on clean channels: the slip above, and twelve of 0.002–0.005 ‰, partly ± pairs (dips of a few
+    cycles).
+
+  The column is a flag for the evaluation's windows (`branch_rate` marks them), not a correction.
+
+**Open:**
+
+- **H0:** the move (RC, Homam).
+- **H4:**
+  - the GUI on the core;
+  - the CLI;
+  - the notebook's `w_loop`;
+  - the README's section on the core;
+  - the version.
+- **With the move (§6.5):** `.gitlab-ci.yml` and `CLAUDE.md`.
+- **Not run here:** the Windows installer build. Its scripts and its locked versions are unchanged.

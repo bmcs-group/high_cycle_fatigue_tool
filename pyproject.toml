@@ -1,7 +1,7 @@
 [project]
 name = "hcft"
 dynamic = ["version"]
-description = "High Cycle Fatigue Tool: a GUI for processing CSV files from fatigue experiments."
+description = "High Cycle Fatigue Tool: the cycle table of fatigue tests (a headless core) and a GUI for processing CSV files from fatigue experiments."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "GPL-3.0" }
@@ -14,8 +14,13 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering",
 ]
+# The core, hcft.cycles, needs numpy alone. The GUI (the hcft command, the Windows installer) needs the extra.
 dependencies = [
     "numpy",
+]
+
+[project.optional-dependencies]
+gui = [
     "pandas",
     "scipy",
     "matplotlib",
@@ -43,6 +48,9 @@ path = "hcft/version.py"
 packages = ["hcft"]
 
 [tool.uv]
+# `uv run` and `uv sync` in this checkout install the default groups, so `uv run hcft` starts the GUI as before.
+# A package that depends on hcft (reproxis) gets numpy alone.
+default-groups = ["gui", "dev"]
 # pyqt5-qt5 doesn't publish wheels for every platform in every release;
 # make sure the lock file resolves to versions installable on all common platforms.
 required-environments = [
@@ -52,6 +60,33 @@ required-environments = [
 ]
 
 [dependency-groups]
+gui = [
+    "hcft[gui]",
+]
+dev = [
+    "pytest",
+    "ruff",
+]
 build = [
     "pyinstaller>=6.22.3",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+# The GUI modules predate the linter; they join when H4 rebases the GUI on the core (concept 01 §7).
+include = ["hcft/cycles.py", "hcft/__init__.py", "hcft/api.py", "hcft/version.py", "tests/**/*.py", "dev/**/*.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "NPY", "RUF"]
+ignore = [
+    "RUF001",  # σ, ε, ‰ and × in strings, docstrings and comments are meant
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/hcft1_reference.py" = ["E", "W", "UP", "RUF"]  # verbatim from hcft 1.1.0
