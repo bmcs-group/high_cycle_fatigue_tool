@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 # Pierre Haessig — March 2014
 """
 Qt adaptation of Gael Varoquaux's tutorial to integrate Matplotlib
@@ -12,10 +11,10 @@ adapted and tested to work with PySide from Anaconda in March 2014
 """
 
 # Importing pyface.qt first selects the Qt binding, which is then also used by matplotlib's generic qtagg backend
-from pyface.qt import QtGui
-from matplotlib.backends.backend_qtagg import \
-    FigureCanvasQTAgg as FigureCanvas, NavigationToolbar2QT
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT
 from matplotlib.figure import Figure
+from pyface.qt import QtGui
 from traits.api import Instance
 from traitsui.basic_editor_factory import BasicEditorFactory
 
@@ -91,10 +90,10 @@ class MPLFigureEditor(BasicEditorFactory):
 
 if __name__ == "__main__":
     # Create a window to demo the editor
-    from traits.api import HasTraits, Int, Float, on_trait_change
-    from traitsui.api import View, Item
-    from numpy import sin, cos, linspace, pi
+    from numpy import cos, linspace, pi, sin
+    from traits.api import Float, HasTraits, Int, on_trait_change
     from traits.etsconfig.api import ETSConfig
+    from traitsui.api import Item, View
 
     ETSConfig.toolkit = 'qt'
 
@@ -113,8 +112,8 @@ if __name__ == "__main__":
                     resizable=True)
 
         def __init__(self):
-            super(Test, self).__init__()
-            axes = self.figure.add_subplot(111)
+            super().__init__()
+            self.figure.add_subplot(111)
             self._t = linspace(0, 2 * pi, 200)
             self.plot()
 
@@ -128,9 +127,9 @@ if __name__ == "__main__":
                 axes.plot(
                     sin(t) * (1 + a * cos(n * t)), cos(t) * (1 + a * cos(n * t)))
             else:
-                l = axes.lines[0]
-                l.set_xdata(sin(t) * (1 + a * cos(n * t)))
-                l.set_ydata(cos(t) * (1 + a * cos(n * t)))
+                line = axes.lines[0]
+                line.set_xdata(sin(t) * (1 + a * cos(n * t)))
+                line.set_ydata(cos(t) * (1 + a * cos(n * t)))
             canvas = self.figure.canvas
             if canvas is not None:
                 canvas.draw()

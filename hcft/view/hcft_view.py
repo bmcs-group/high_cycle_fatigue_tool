@@ -1,11 +1,10 @@
 import traitsui.api as ui
-import traitsui.editors
+
 from hcft.app_icon import app_icon
 from hcft.utils.busy_indicator_editor_qt import BusyIndicatorEditor
 from hcft.utils.log_editor_qt import LogEditor
 from hcft.utils.mpl_figure_editor_qt import MPLFigureEditor
-
-from hcft.view.hcft_view_handler import ViewHandler, menu_exit, menu_utilities_csv_joiner, menu_about_tool
+from hcft.view.hcft_view_handler import ViewHandler, menu_about_tool, menu_exit, menu_utilities_csv_joiner
 
 # =========================================================================
 # Configuration of the views
@@ -119,12 +118,17 @@ filters_view_group = ui.VGroup(
                             ui.VGroup(ui.HGroup(ui.Item('cutting_method'),
                                                 ui.UItem('cutting_method_info',
                                                          tooltip='Show the difference between the methods')),
-                                      ui.VGroup(ui.Item('force_max'),
+                                      ui.VGroup(ui.Item('force_max',
+                                                        tooltip='Cycles reach beyond both levels (absolute values);\n'
+                                                                'of their turning points, the max beyond Max\n'
+                                                                'and the min within Min are kept'),
                                                 ui.Item('force_min'),
                                                 label='Max, Min:',
                                                 show_border=True,
                                                 visible_when='cutting_method == "Define Max, Min"'),
-                                      ui.VGroup(ui.Item('min_cycle_force_range'),
+                                      ui.VGroup(ui.Item('min_cycle_force_range',
+                                                        tooltip='A reversal counts once the force has come back\n'
+                                                                'from its running extreme by more than this range'),
                                                 label='Min cycle force range:',
                                                 show_border=True,
                                                 visible_when='cutting_method == \

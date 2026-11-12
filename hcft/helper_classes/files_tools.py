@@ -3,12 +3,12 @@ import string
 import subprocess
 import sys
 
-from pyface.api import YES, NO
+from pyface.api import NO, YES
 from pyface.confirmation_dialog import confirm
 
 
 def get_valid_file_name(original_file_name):
-    valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+    valid_chars = f"-_.() {string.ascii_letters}{string.digits}"
     new_valid_file_name = ''.join(
         c for c in original_file_name if c in valid_chars)
     return new_valid_file_name

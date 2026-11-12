@@ -17,10 +17,11 @@ import matplotlib as mpl
 import numpy as np
 import pandas as pd
 import traits.api as tr
-from pyface.api import FileDialog, GUI, MessageDialog, OK, YES, warning
-from scipy.signal import savgol_filter
+from pyface.api import GUI, OK, YES, FileDialog, MessageDialog, warning
 from pyface.confirmation_dialog import confirm
+from scipy.signal import savgol_filter
 
+from hcft import cycles
 from hcft.helper_classes.columns_average import Column, ColumnsAverage
 from hcft.helper_classes.csv_tools import get_headers
 from hcft.helper_classes.cutting_method_info import CuttingMethodInfo
@@ -172,7 +173,7 @@ class HCFT(tr.HasStrictTraits):
             self.import_data_json()
             self.file_loaded = True
 
-        except:
+        except Exception:
             self.log_exception()
         finally:
             self.update_npy_availability()
@@ -210,13 +211,13 @@ class HCFT(tr.HasStrictTraits):
             cache_file_path = os.path.join(tempfile.gettempdir(), self.cached_path_file_name)
             with open(cache_file_path, "w") as f:
                 f.write(path)
-        except:
+        except Exception:
             self.print_custom('Caching file path failed. This has no effect on the results.')
 
     def _get_cached_file_path_from_system_tmp(self):
         cache_file_path = os.path.join(tempfile.gettempdir(), self.cached_path_file_name)
         if os.path.exists(cache_file_path):
-            with open(cache_file_path, "r") as f:
+            with open(cache_file_path) as f:
                 cached_path = f.read().strip()
                 if os.path.exists(cached_path):
                     return cached_path
@@ -241,7 +242,7 @@ class HCFT(tr.HasStrictTraits):
 
                 avg_file_suffix = self.get_suffix_for_columns_to_be_averaged(columns_to_be_averaged_temp)
                 self.columns_headers.append(avg_file_suffix)
-        except:
+        except Exception:
             self.log_exception()
 
     def _parse_csv_to_npy_fired(self):
@@ -282,7 +283,7 @@ class HCFT(tr.HasStrictTraits):
                 for tmp_file in tmp_files:
                     tmp_file.close()
 
-            for column_name, tmp_path in zip(original_columns, tmp_paths):
+            for column_name, tmp_path in zip(original_columns, tmp_paths, strict=True):
                 column_array = np.fromfile(tmp_path, dtype=np.float64)
                 os.remove(tmp_path)
                 if column_name == self.time_column and self.take_time_from_time_column is False:
@@ -302,7 +303,7 @@ class HCFT(tr.HasStrictTraits):
 
             self.export_data_json()
             self.print_custom('Finished parsing csv into npy files.')
-        except:
+        except Exception:
             self.log_exception()
         finally:
             self.update_npy_availability()
@@ -464,7 +465,7 @@ class HCFT(tr.HasStrictTraits):
                                             peak_force_before_cycles_index)
 
             self.print_custom('Filtered and creep npy files are generated.')
-        except:
+        except Exception:
             self.log_exception()
         finally:
             self.update_npy_availability()
@@ -487,17 +488,9 @@ class HCFT(tr.HasStrictTraits):
 
     def export_displacements_creep(self, force_rest, force_max_indices, force_min_indices,
                                    peak_force_before_cycles_index):
-        if self.cutting_method == "Define Max, Min":
-            force_max_indices_cut, force_min_indices_cut = self.cut_indices_of_min_max_range(force_rest,
-                                                                                             force_max_indices,
-                                                                                             force_min_indices,
-                                                                                             self.force_max,
-                                                                                             self.force_min)
-        elif self.cutting_method == "Define min cycle range(force difference)":
-            force_max_indices_cut, force_min_indices_cut = self.cut_indices_of_defined_range(force_rest,
-                                                                                             force_max_indices,
-                                                                                             force_min_indices,
-                                                                                             self.min_cycle_force_range)
+        force_max_indices_cut, force_min_indices_cut = self.get_cycles_turning_indices(force_rest)
+        if force_max_indices_cut is None:
+            return
         self.print_custom("Cycles number= ", len(force_min_indices))
         self.print_custom("Cycles number after cutting fake cycles = ", len(force_min_indices_cut))
 
@@ -547,26 +540,32 @@ class HCFT(tr.HasStrictTraits):
         is_min = (values[1:-1] < values[:-2]) & (values[1:-1] < values[2:])
         return indices[1:-1][is_min]
 
-    def cut_indices_of_min_max_range(self, array, max_indices, min_indices,
-                                     range_upper_value, range_lower_value):
-        cut_max_indices = max_indices[np.abs(array[max_indices]) > abs(range_upper_value)]
-        cut_min_indices = min_indices[np.abs(array[min_indices]) < abs(range_lower_value)]
-        return cut_max_indices, cut_min_indices
-
-    def cut_indices_of_defined_range(self, array, max_indices, min_indices, range_):
-        # Each max is paired with the min of the same order, only pairs with bigger force difference than range_ are
-        # kept
-        n = min(max_indices.size, min_indices.size)
-        is_full_cycle = np.abs(array[max_indices[:n]] - array[min_indices[:n]]) > range_
-        cut_max_indices = max_indices[:n][is_full_cycle]
-        cut_min_indices = min_indices[:n][is_full_cycle]
-
-        if max_indices.size > min_indices.size:
-            cut_max_indices = np.append(cut_max_indices, max_indices[-1])
-        elif min_indices.size > max_indices.size:
-            cut_min_indices = np.append(cut_min_indices, min_indices[-1])
-
-        return cut_max_indices, cut_min_indices
+    def get_cycles_turning_indices(self, force):
+        # The turning points of the full cycles come from the core, hcft.cycles: a reversal counts once the force has
+        # come back from its running extreme by more than a band, so a noise extremum never shifts the pairing
+        # (hcft 1 paired the i-th max with the i-th min). The max are the extremes of the dominant sign, as before.
+        # - "Define min cycle range": the range is the band.
+        # - "Define Max, Min": the band is the distance between the levels (absolute values); of the turning points
+        #   the max beyond Max and the min within Min are kept.
+        sign = 1.0 if np.sum(force >= 0) > np.sum(force < 0) else -1.0
+        if self.cutting_method == "Define Max, Min":
+            band = abs(self.force_max) - abs(self.force_min)
+            what = '"Max" must be bigger than "Min" (absolute values)'
+        else:
+            band = self.min_cycle_force_range
+            what = '"Min cycle force range" must be positive'
+        if not band > 0:
+            self.warn_user(what, ', no cycles are cut.')
+            return None, None
+        indices, kind = cycles.turning_points(sign * force, band)
+        max_indices, min_indices = indices[kind == 1], indices[kind == -1]
+        # A cycle runs max -> min -> max: a min before the first max is the foot of the loading ramp
+        if max_indices.size:
+            min_indices = min_indices[min_indices > max_indices[0]]
+        if self.cutting_method == "Define Max, Min":
+            max_indices = max_indices[np.abs(force[max_indices]) > abs(self.force_max)]
+            min_indices = min_indices[np.abs(force[min_indices]) < abs(self.force_min)]
+        return max_indices, min_indices
 
     def _window_length_changed(self, new):
         if new <= self.polynomial_order:
@@ -605,19 +604,19 @@ class HCFT(tr.HasStrictTraits):
     def _plot_settings_btn_fired(self):
         try:
             self.plot_settings.configure_traits(kind='modal')
-        except:
+        except Exception:
             self.log_exception()
 
     def _cutting_method_info_fired(self):
         try:
             self._cutting_method_info_ui = self.show_info_window(self._cutting_method_info_ui, CuttingMethodInfo)
-        except:
+        except Exception:
             self.log_exception()
 
     def _smoothing_info_fired(self):
         try:
             self._smoothing_info_ui = self.show_info_window(self._smoothing_info_ui, SmoothingInfo)
-        except:
+        except Exception:
             self.log_exception()
 
     def show_info_window(self, ui, info_class):
@@ -716,7 +715,7 @@ class HCFT(tr.HasStrictTraits):
             self.data_changed = True
             self.print_custom('Finished adding plot.')
 
-        except:
+        except Exception:
             self.log_exception()
 
     def _add_creep_plot_fired(self):
@@ -770,7 +769,7 @@ class HCFT(tr.HasStrictTraits):
             self.data_changed = True
             self.print_custom('Finished adding creep-fatigue plot.')
 
-        except:
+        except Exception:
             self.log_exception()
 
     def get_indices_array(self,
@@ -803,7 +802,7 @@ class HCFT(tr.HasStrictTraits):
         df = pd.DataFrame()
 
         max_data_length = 0
-        for i, line in enumerate(self.ax.lines):
+        for line in self.ax.lines:
             max_data_length = max(len(line.get_xdata()), max_data_length)
 
         for i, line in enumerate(self.ax.lines):
